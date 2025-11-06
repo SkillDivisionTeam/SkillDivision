@@ -1,0 +1,46 @@
+version: '3.9'
+services:
+  backend:
+    build: ./backend
+    container_name: skill_backend
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: skill_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/
+
+  bot:
+    build: ./bot
+    container_name: skill_bot
+    env_file:
+      - .env
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:14
+    container_name: skill_db
+    restart: always
+    environment:
+      POSTGRES_DB: skilldivision
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
