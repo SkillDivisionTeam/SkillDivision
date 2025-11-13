@@ -172,7 +172,7 @@ IT сообщество видит проблему в современном п
 
 #### 3.3.2. Сценарии использования
 
-![Use Case](./images/Use%20case%20Skill%20Division.png)
+![Use Case](./images/Use%20case%20Skill%20Division.jpg)
 
 ### 3.4. Требования
 
