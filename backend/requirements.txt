@@ -30,7 +30,7 @@ django-debug-toolbar==4.2.0
 # Тестирование
 pytest==7.4.3
 pytest-django==4.7.0
-pytest-cov==4.1.0
+pytest-cov==7.0.0
 
 # Форматирование и линтинг кода
 black==23.12.1
