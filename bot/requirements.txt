@@ -12,7 +12,7 @@ djangorestframework==3.14.0
 psycopg2-binary==2.9.9
 
 # CORS (для связи frontend-backend)
-django-cors-headers==4.3.1
+django-cors-headers==4.9.0
 
 # Переменные окружения
 python-decouple==3.8
