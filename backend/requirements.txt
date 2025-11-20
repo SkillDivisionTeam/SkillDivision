@@ -33,6 +33,6 @@ pytest-django==4.7.0
 pytest-cov==4.1.0
 
 # Форматирование и линтинг кода
-black==23.12.1
+black==25.11.0
 flake8==7.0.0
 isort==5.13.2
