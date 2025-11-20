@@ -6,7 +6,7 @@
 
 | Что | Версия | Зачем |
 |-----|--------|-------|
-| Python | **3.11.11** | Быстрая, стабильная, поддержка до 2027 |
+| Python | **3.11.9** | Быстрая, стабильная, поддержка до 2027 |
 | Django | **4.2.16 LTS** | Long Term Support до 2026 |
 | PostgreSQL | **14.12** | Оптимальна для малых проектов, поддержка до 2026 |
 | Node.js | **20.11 LTS** | Современная LTS с поддержкой до 2026 |
@@ -19,7 +19,7 @@
 ### Backend (Django + API)
 
 ```txt
-Python: 3.11.11
+Python: 3.11.9
 Django: 4.2.16
 Django REST Framework: 3.14.0
 PostgreSQL: 14.12
@@ -31,7 +31,7 @@ python-decouple: 3.8
 **Docker образ:**
 
 ```dockerfile
-FROM python:3.11.11-slim
+FROM python:3.11.9-slim
 ```
 
 ---
@@ -39,7 +39,7 @@ FROM python:3.11.11-slim
 ### Telegram Bot
 
 ```txt
-Python: 3.11.11
+Python: 3.11.9
 python-telegram-bot: 20.7
 requests: 2.31.0
 python-decouple: 3.8
@@ -48,7 +48,7 @@ python-decouple: 3.8
 **Docker образ:**
 
 ```dockerfile
-FROM python:3.11.11-slim
+FROM python:3.11.9-slim
 ```
 
 ---
