@@ -9,7 +9,7 @@ Django==4.2.16
 djangorestframework==3.14.0
 
 # База данных PostgreSQL
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.11
 
 # CORS (для связи frontend-backend)
 django-cors-headers==4.3.1
