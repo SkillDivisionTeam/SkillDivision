@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # Backend dependencies (pip)
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    target-branch: "develop" # PR'ы создаются в ветку develop
+    open-pull-requests-limit: 10
+    # Игнорируем мажорные обновления
+    ignore:
+      - dependency-name: "django"
+        update-types: ["version-update:semver-major"]
+
+  # Frontend dependencies (npm)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    target-branch: "develop"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+
+  # Bot dependencies (pip)
+  - package-ecosystem: "pip"
+    directory: "/bot"
+    schedule:
+      interval: "weekly"
+    target-branch: "develop"

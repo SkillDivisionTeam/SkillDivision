@@ -2,9 +2,9 @@
 
 Интерактивная платформа для проведения квизов и оценки участников мероприятий.
 
-![Backend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/backend-tests.yml/badge.svg)
-![Frontend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/frontend-build.yml/badge.svg)
-![Lint](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/lint.yml/badge.svg)
+![Backend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/backend.yml/badge.svg)
+![Frontend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/frontend.yml/badge.svg)
+![Bot CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/bot.yml/badge.svg)
 
 ## Стек технологий
 
