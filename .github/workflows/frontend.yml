@@ -36,8 +36,7 @@ jobs:
         run: npm ci
 
       - name: Lint
-        # Убедитесь, что в package.json есть скрипт "lint"
-        run: npm run lint --if-present
+        run: npm run lint
 
-      - name: Build
+      - name: Type Check & Build
         run: npm run build

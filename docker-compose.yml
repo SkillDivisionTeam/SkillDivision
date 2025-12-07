@@ -16,14 +16,19 @@ services:
       - db
     restart: unless-stopped
 
-  # Frontend (React)
+  # Frontend (React + Vite)
   frontend:
     build: ./frontend
     container_name: skill_frontend
     ports:
       - "3000:3000"
-    environment:
-      - REACT_APP_API_URL=http://localhost:8000/api/
+    volumes:
+      - ./frontend:/app             # Hot Reload
+      - /app/node_modules           # Изоляция зависимостей контейнера
+#    environment:
+#      - VITE_API_URL=http://localhost:8000/api/
+#    depends_on:
+#      - backend
     restart: unless-stopped
 
   # Telegram Bot
