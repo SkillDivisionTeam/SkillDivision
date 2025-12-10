@@ -31,7 +31,7 @@ const Auth: React.FC<AuthPageProps> = ({ type, onLogin }) => {
         onLogin(user);
         navigate('/events');
       }
-    } catch (err) {
+    } catch {
       setError('Ошибка авторизации. Попробуйте "organizer_demo"');
     } finally {
       setIsLoading(false);

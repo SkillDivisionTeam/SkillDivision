@@ -43,7 +43,7 @@ const CreateEvent: React.FC = () => {
         is_active: true
       });
       navigate('/events');
-    } catch (error) {
+    } catch {
       console.error("Failed to create event");
     } finally {
       setLoading(false);

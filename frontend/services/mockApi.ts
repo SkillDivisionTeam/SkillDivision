@@ -23,7 +23,8 @@ const MOCK_EVENTS: Event[] = [
 ];
 
 // Simulated API calls
-export const login = async (username: string): Promise<User> => {
+// _username переменная не используется
+export const login = async (_username: string): Promise<User> => {
   return new Promise((resolve) => {
     setTimeout(() => resolve(MOCK_USER), 800);
   });
@@ -43,7 +44,8 @@ export const getEventById = async (id: number): Promise<Event | undefined> => {
   });
 };
 
-export const getEventStats = async (id: number): Promise<EventStats> => {
+// _id переменная не используется
+export const getEventStats = async (_id: number): Promise<EventStats> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
