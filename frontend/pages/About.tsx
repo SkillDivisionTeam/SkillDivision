@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from '../components/UI';
-import { Database, Server, Smartphone, Globe, Layers, ShieldCheck, Zap } from 'lucide-react';
+import { Database, Smartphone, Globe, Layers, ShieldCheck, Zap } from 'lucide-react';
 
 const About: React.FC = () => {
   return (

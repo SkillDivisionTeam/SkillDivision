@@ -15,7 +15,7 @@ const Events: React.FC = () => {
       try {
         const data = await getEvents();
         setEvents(data);
-      } catch (error) {
+      } catch { 
         console.error("Failed to load events");
       } finally {
         setLoading(false);
