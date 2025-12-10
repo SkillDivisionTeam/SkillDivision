@@ -7,15 +7,29 @@ import string
 from datetime import datetime
 from telebot.apihelper import ApiTelegramException
 import json
-from gigachat import GigaChat  # pip install gigachat
+from gigachat import GigaChat
+from dotenv import load_dotenv
+import os
+import logging
+import re
+
+load_dotenv()
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s', datefmt='%H:%M:%S')
+logger = logging.getLogger(__name__)
+
+# Подавление ошибок от telebot при остановке
+telebot.logger.setLevel(logging.CRITICAL)
 
 # ==================== ТОКЕНЫ ====================
-TOKEN = '8435025001:AAGLHLb-j-s1QTQCNd1RQtCysAp4NR4ULYk'  # твой телеграм-бот
+TOKEN = os.getenv('TG_TOKEN')
+GIGACHAT_CREDENTIALS = os.getenv('GIGACHAT_TOKEN')
 
-# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
-# СЮДА ВСТАВЬ СВОЙ КЛЮЧ ИЗ https://developers.sber.ru
-GIGACHAT_CREDENTIALS = 'MDE5YWExNTEtNTIzNC03YjZiLTg3OWEtMDIwNGRkMDIyNTc4OjM1NGE1NGNmLTU1MTgtNDM1Yi05MTUzLWYzNGNiZDM3OTNmZg=='
-# ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←
+if not TOKEN:
+    raise ValueError("TG_TOKEN не найден в переменных окружения!")
+if not GIGACHAT_CREDENTIALS:
+    logger.warning("Внимание: GIGACHAT_TOKEN не найден. Будет использоваться fallback-квиз")
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -25,17 +39,19 @@ def safe_send(chat_id, text, parse_mode=None, reply_markup=None, **kwargs):
         return bot.send_message(chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
     except ApiTelegramException as e:
         if e.error_code == 403:
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] User {chat_id} blocked the bot")
+            logger.info(f"User {chat_id} blocked the bot")
         else:
-            print(f"Telegram error {e.error_code}: {e.description}")
+            logger.error(f"Telegram error {e.error_code}: {e.description}")
     except Exception as e:
-        print(f"Send error to {chat_id}: {e}")
+        logger.error(f"Send error to {chat_id}: {e}")
 
 def safe_delete(chat_id, message_id):
     try:
         bot.delete_message(chat_id, message_id)
-    except:
-        pass
+    except ApiTelegramException as e:
+        logger.error(f"Delete message error: {e.description}")
+    except Exception as e:
+        logger.error(f"Unexpected delete error: {e}")
 
 # ==================== БАЗА ЛИДЕРОВ ====================
 conn = sqlite3.connect('leaders.db', check_same_thread=False)
@@ -66,13 +82,12 @@ def get_top(theme="IT-основы", limit=10):
 def generate_quiz_gigachat():
     prompt = """
 Ты — идеальный генератор квизов. Сгенерируй ровно 5 новых, интересных вопросов по теме "IT-основы" (уровень начинающий/средний).
-Каждый вопрос: 4 варианта ответа, только один правильный.
+Каждый вопрос: 4 варианта ответа, только один правильный. Индекс правильного ответа (correct) должен быть целым числом от 0 до 3 включительно.
 
 ВЕРНИ СТРОГО ТОЛЬКО JSON БЕЗ ЛИШНЕГО ТЕКСТА И БЕЗ ```json:
 
 {
   "info": "🖥 *Квиз по IT-основам*\\n\\n5 вопросов • 10 секунд на ответ\\n+5 за правильный • 0 за неправильный • –3 за таймаут\\n\\nУдачи! 🚀",
-  ",
   "questions": [
     {
       "text": "Текст вопроса?",
@@ -89,28 +104,41 @@ def generate_quiz_gigachat():
             response = giga.chat(prompt)
         raw = response.choices[0].message.content.strip()
 
-        if raw.startswith("```json"):
-            raw = raw[7:-3]
-        elif raw.startswith("```"):
-            raw = raw[3:-3]
-
-        data = json.loads(raw)
-        if len(data.get("questions", [])) == 5:
-            print("Новый квиз успешно получен от GigaChat")
-            return data
+        # Улучшенная обработка с использованием регулярных выражений для извлечения JSON
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            json_str = match.group(0)
+            data = json.loads(json_str)
+            questions = data.get("questions", [])
+            if len(questions) == 5:
+                # Валидация и приведение correct к int
+                for q in questions:
+                    if "correct" in q:
+                        q["correct"] = int(q["correct"])
+                    if not isinstance(q.get("correct"), int) or not 0 <= q["correct"] < 4:
+                        raise ValueError(f"Invalid correct index: {q.get('correct')}")
+                logger.info("Новый квиз успешно получен от GigaChat")
+                return data
+        else:
+            raise ValueError("Не удалось извлечь JSON из ответа")
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parse error: {e}")
+    except ValueError as e:
+        logger.error(f"Quiz validation error: {e}")
     except Exception as e:
-        print(f"GigaChat error: {e}")
-        return None
+        logger.error(f"GigaChat error: {e}")
+    return None
 
 # ==================== ЗАГРУЗКА КВИЗА (ИИ + fallback) ====================
-def load_quiz():
+def load_quiz(chat_id):
+    safe_send(chat_id, "Генерирую квиз. Это может занять некоторое время.")
     quiz = generate_quiz_gigachat()
     if quiz:
         return quiz
 
-    print("GigaChat недоступен — загружаем старый квиз")
+    logger.warning("GigaChat недоступен — загружаем старый квиз")
     return {
-        "info": "🖥 *Квиз по IT-основам*\\n\\n5 вопросов • 10 секунд на ответ\\n+5 за правильный • 0 за неправильный • –3 за таймаут\\n\\nУдачи! 🚀",
+        "info": "🖥 *Квиз по IT-основам*\n\n5 вопросов • 10 секунд на ответ\n+5 за правильный • 0 за неправильный • –3 за таймаут\n\nУдачи! 🚀",
         "questions": [
             {"text": "Что расшифровывается как CPU?", "options": ["Central Processing Unit", "Computer Personal Unit", "Central Power Unit", "Control Processing Unit"], "correct": 0},
             {"text": "Кто изобрёл World Wide Web?", "options": ["Билл Гейтс", "Тим Бернерс-Ли", "Стив Джобс", "Марк Цукерберг"], "correct": 1},
@@ -126,16 +154,26 @@ rooms = {}
 quick_queue = []
 
 # ==================== МЕНЮ ====================
+def events_menu(chat_id):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup.add("Мероприятие 1", "Мероприятие 2", "Мероприятие 3")
+    markup.add("Информация о Skill Division")
+    safe_send(chat_id, "Выберите мероприятие:", reply_markup=markup)
+
 def main_menu(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add("🎮 Одиночная", "⚔ Дуэль")
-    markup.add("🏆 Топ игроков")
+    markup.add("🏆 Топ игроков", "Информация о мероприятии")
+    markup.add("← К выбору мероприятия")
     safe_send(chat_id, "🏠 Главное меню", reply_markup=markup)
 
 @bot.message_handler(commands=['start'])
 def start(m):
-    safe_send(m.chat.id, "Привет! 👋\nЭто квиз-бот с вопросами от GigaChat\nОдиночная игра и дуэль 1×1\n10 секунд на вопрос ⏱")
-    main_menu(m.chat.id)
+    chat_id = m.chat.id
+    safe_send(chat_id, "Привет! 👋\nЭто квиз-бот с вопросами от GigaChat\nОдиночная игра и дуэль 1×1\n10 секунд на вопрос ⏱")
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    markup.add("Старт")
+    safe_send(chat_id, "Нажмите кнопку для начала:", reply_markup=markup)
 
 # ==================== ОБРАБОТКА КНОПОК ====================
 @bot.message_handler(func=lambda m: True)
@@ -143,8 +181,21 @@ def handler(m):
     chat_id = m.chat.id
     text = m.text
 
-    if text == "🎮 Одиночная":
-        quiz = load_quiz()
+    if text == "Старт":
+        events_menu(chat_id)
+    elif text == "Информация о Skill Division":
+        safe_send(chat_id, "Hello world!")
+        events_menu(chat_id)
+    elif text == "Мероприятие 1":
+        main_menu(chat_id)
+    elif text in ["Мероприятие 2", "Мероприятие 3"]:
+        safe_send(chat_id, "Это мероприятие в разработке.")
+        events_menu(chat_id)
+    elif text == "Информация о мероприятии":
+        safe_send(chat_id, "Hello world!")
+        main_menu(chat_id)
+    elif text == "🎮 Одиночная":
+        quiz = load_quiz(chat_id)
         user_data[chat_id] = {"mode": "single", "quiz": quiz, "score": 0, "question_index": 0, "answered": False, "timer": None}
         safe_send(chat_id, quiz["info"], parse_mode="Markdown")
         markup = types.InlineKeyboardMarkup()
@@ -180,6 +231,12 @@ def handler(m):
     elif text == "🏆 Топ игроков":
         safe_send(chat_id, get_top())
 
+    elif text == "← К выбору мероприятия":
+        if chat_id in quick_queue:
+            quick_queue.remove(chat_id)
+        user_data.pop(chat_id, None)
+        events_menu(chat_id)
+
     elif text in ["Отмена", "← Назад"]:
         if chat_id in quick_queue:
             quick_queue.remove(chat_id)
@@ -194,7 +251,7 @@ def quick_match(chat_id):
     if quick_queue:
         opponent = quick_queue.pop(0)
         code = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-        quiz = load_quiz()
+        quiz = load_quiz(chat_id)
         rooms[code] = {"players": [opponent, chat_id], "quiz": quiz, "current": 0, "scores": {opponent: 0, chat_id: 0}, "answered": set(), "timer": None}
         for pid in [opponent, chat_id]:
             user_data.pop(pid, None)
@@ -215,7 +272,7 @@ def join_by_code(m):
         main_menu(m.chat.id)
         return
     rooms[code]["players"].append(m.chat.id)
-    quiz = load_quiz()
+    quiz = load_quiz(m.chat.id)
     rooms[code]["quiz"] = quiz
     rooms[code]["waiting"] = False
     rooms[code]["current"] = 0
@@ -266,13 +323,15 @@ def single_answer(call):
     user["answered"] = True
     if user["timer"]:
         user["timer"].cancel()
+    q = user["quiz"]["questions"][user["question_index"]]
     choice = int(call.data.split("_")[2])
-    correct = user["quiz"]["questions"][user["question_index"]]["correct"]
+    correct = q["correct"]
     if choice == correct:
         user["score"] += 5
         bot.answer_callback_query(call.id, "Верно! +5 ✅")
     else:
-        bot.answer_callback_query(call.id, "Неправильно ❌")
+        correct_opt = q["options"][correct]
+        bot.answer_callback_query(call.id, f"Неправильно. Правильный ответ: {correct_opt} ❌")
     next_single(call.message.chat.id)
 
 def next_single(chat_id):
@@ -342,12 +401,14 @@ def duel_answer(call):
         return
     room["answered"].add(chat_id)
 
-    correct = room["quiz"]["questions"][room["current"]]["correct"]
+    q = room["quiz"]["questions"][room["current"]]
+    correct = q["correct"]
     if choice == correct:
         room["scores"][chat_id] += 5
         bot.answer_callback_query(call.id, "Верно! +5 ✅")
     else:
-        bot.answer_callback_query(call.id, "Неправильно ❌")
+        correct_opt = q["options"][correct]
+        bot.answer_callback_query(call.id, f"Неправильно. Правильный ответ: {correct_opt} ❌")
 
     if len(room["answered"]) == 2:
         room["timer"].cancel()
@@ -394,5 +455,5 @@ def to_main(call):
 
 # ==================== ЗАПУСК ====================
 if __name__ == '__main__':
-    print("Бот запущен! Вопросы генерирует GigaChat")
+    logger.info("Бот запущен! Вопросы генерирует GigaChat")
     bot.infinity_polling()
