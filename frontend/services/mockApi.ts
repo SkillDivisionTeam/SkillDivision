@@ -17,9 +17,9 @@ const MOCK_USER: User = {
 };
 
 const MOCK_EVENTS: Event[] = [
-  { id: 1, title: "Python Conf 2024", date: "2024-10-15", event_code: "PY24", is_active: true, participants_count: 120, description: "Ежегодная конференция разработчиков Python. Квиз по асинхронности и типизации." },
-  { id: 2, title: "DevOps Summit", date: "2024-11-01", event_code: "OPS1", is_active: false, participants_count: 45, description: "Воркшопы по Docker и Kubernetes. Хакатон по настройке CI/CD." },
-  { id: 3, title: "Frontend Masters", date: "2024-12-10", event_code: "FE24", is_active: true, participants_count: 200, description: "React, Vue и Angular. Глубокое погружение в современные фреймворки." },
+  { id: 1, title: "Python Conf 2025", date: "2025-10-15", event_code: "PY25", is_active: true, participants_count: 120, description: "Ежегодная конференция разработчиков Python. Квиз по асинхронности и типизации." },
+  { id: 2, title: "DevOps Summit", date: "2025-11-01", event_code: "OPS1", is_active: false, participants_count: 45, description: "Воркшопы по Docker и Kubernetes. Хакатон по настройке CI/CD." },
+  { id: 3, title: "Frontend Masters", date: "2025-12-10", event_code: "FE25", is_active: true, participants_count: 200, description: "React, Vue и Angular. Глубокое погружение в современные фреймворки." },
 ];
 
 // Simulated API calls

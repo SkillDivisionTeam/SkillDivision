@@ -16,9 +16,68 @@
 
 ## Компоненты
 
-- backend — API и логика
-- frontend — веб-интерфейс
-- bot — Telegram-бот
+- **backend** — API и бизнес-логика
+- **frontend** — веб-интерфейс (React + Vite)
+- **bot** — Telegram-бот
+- **db** — PostgreSQL
+- **pgadmin** — веб-интерфейс для управления БД
+
+## Запуск и установка
+
+Для запуска проекта потребуется установленный **Docker** и **Docker Compose**.
+
+### 1. Настройка окружения
+
+В корне проекта создайте файл `.env`. Пример переменных можно посмотреть в `.env.example`.
+
+### 2. Запуск контейнеров
+
+Сборка и запуск всех сервисов в фоновом режиме:
+
+```bash
+docker compose up -d --build [имя компонента]
+```
+
+### 3. Применение миграций
+
+После первого запуска необходимо применить миграции к базе данных:
+
+```bash
+docker compose exec backend python manage.py migrate
+```
+
+Создание суперпользователя (для доступа в админку Django):
+
+```bash
+docker compose exec backend python manage.py createsuperuser
+```
+
+### Доступы к сервисам
+
+После успешного запуска сервисы будут доступны по адресам:
+
+- **Frontend:** [http://localhost:3000](http://localhost:3000)
+- **Backend API:** [http://localhost:8000](http://localhost:8000)
+- **Админка Django:** [http://localhost:8000/admin](http://localhost:8000/admin)
+- **pgAdmin:** [http://localhost:5050](http://localhost:5050) (Login: `admin@admin.com`, Pass: `admin`)
+
+### Полезные команды
+
+```bash
+# Просмотр логов всех контейнеров
+docker compose logs -f
+
+# Просмотр логов конкретного сервиса (например, backend)
+docker compose logs -f backend
+
+# Перезапуск отдельного контейнера
+docker compose restart frontend
+
+# Остановка проекта
+docker compose down
+```
+
+> **Примечание:** В проекте настроен Hot Reload для `frontend` и `backend`. Изменения в коде локально автоматически отображаются в контейнерах.
 
 ## Документация
 
