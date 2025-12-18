@@ -3,7 +3,7 @@ import { Mail, Shield, Calendar, Users, Settings, Target, BarChart3, Clock, Chev
 import { useNavigate, Link } from 'react-router-dom';
 import { User as UserType, Event } from '../types';
 import { Card, Badge } from '../components/UI';
-import { getEvents } from '../services/mockApi';
+import { getEvents } from '../services/api';
 
 interface ProfileProps {
   user: UserType;

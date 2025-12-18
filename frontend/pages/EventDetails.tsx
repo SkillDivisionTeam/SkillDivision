@@ -19,7 +19,7 @@ import {
   Legend 
 } from 'recharts';
 import { Button, Card, Badge } from '../components/UI';
-import { getEventById, getEventStats } from '../services/mockApi';
+import { getEventById, getEventStats } from '../services/api';
 import { Event, EventStats } from '../types';
 
 const EventDetails: React.FC = () => {

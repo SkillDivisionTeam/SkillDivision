@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Input, Card } from '../components/UI';
-import { login } from '../services/mockApi';
+import { login } from '../services/api';
 import { User } from '../types';
 
 interface AuthPageProps {
@@ -22,17 +22,17 @@ const Auth: React.FC<AuthPageProps> = ({ type, onLogin }) => {
 
     try {
       if (type === 'login') {
-        const user = await login(formData.username);
+        // Передаем и логин, и пароль
+        const user = await login(formData.username, formData.password);
         onLogin(user);
         navigate('/profile');
       } else {
-        // Mock registration -> Login
-        const user = await login(formData.username);
-        onLogin(user);
-        navigate('/events');
+        // Регистрацию пока оставим как заглушку
+        alert("Регистрация доступна только через администратора или бота. Попробуйте войти.");
+        // В будущем можно добавить эндпоинт /register/ на бэкенде
       }
-    } catch {
-      setError('Ошибка авторизации. Попробуйте "organizer_demo"');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка авторизации. Проверьте логин и пароль.');
     } finally {
       setIsLoading(false);
     }
