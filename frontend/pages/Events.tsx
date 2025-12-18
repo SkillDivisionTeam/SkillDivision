@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Calendar, Users, Hash, Loader2 } from 'lucide-react';
 import { Button, Card, Badge } from '../components/UI';
-import { getEvents } from '../services/mockApi';
+import { getEvents } from '../services/api';
 import { Event } from '../types';
 
 const Events: React.FC = () => {
