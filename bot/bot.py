@@ -1,459 +1,484 @@
 import telebot
 from telebot import types
 import threading
-import sqlite3
+import requests
 import random
 import string
-from datetime import datetime
-from telebot.apihelper import ApiTelegramException
-import json
-from gigachat import GigaChat
-from dotenv import load_dotenv
 import os
 import logging
+import json
 import re
+from gigachat import GigaChat
+from dotenv import load_dotenv
 
 load_dotenv()
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s', datefmt='%H:%M:%S')
+# ==================== КОНФИГУРАЦИЯ ====================
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
-# Подавление ошибок от telebot при остановке
-telebot.logger.setLevel(logging.CRITICAL)
-
-# ==================== ТОКЕНЫ ====================
-TOKEN = os.getenv('TG_TOKEN')
-GIGACHAT_CREDENTIALS = os.getenv('GIGACHAT_TOKEN')
-
-if not TOKEN:
-    raise ValueError("TG_TOKEN не найден в переменных окружения!")
-if not GIGACHAT_CREDENTIALS:
-    logger.warning("Внимание: GIGACHAT_TOKEN не найден. Будет использоваться fallback-квиз")
+TOKEN = os.getenv("TG_TOKEN")
+GIGACHAT_CREDENTIALS = os.getenv("GIGACHAT_TOKEN")
+API_URL = os.getenv("BACKEND_API_URL", "http://backend:8000/api")
 
 bot = telebot.TeleBot(TOKEN)
 
-# ==================== БЕЗОПАСНЫЕ ФУНКЦИИ ====================
-def safe_send(chat_id, text, parse_mode=None, reply_markup=None, **kwargs):
+
+# ==================== API КЛИЕНТ ====================
+def api_register_user(user):
     try:
-        return bot.send_message(chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup, **kwargs)
-    except ApiTelegramException as e:
-        if e.error_code == 403:
-            logger.info(f"User {chat_id} blocked the bot")
-        else:
-            logger.error(f"Telegram error {e.error_code}: {e.description}")
+        username = user.username or f"user_{user.id}"
+        payload = {"tg_id": user.id, "username": username}
+        requests.post(f"{API_URL}/bot-auth/", json=payload)
     except Exception as e:
-        logger.error(f"Send error to {chat_id}: {e}")
+        logger.error(f"Reg Error: {e}")
 
-def safe_delete(chat_id, message_id):
+
+def api_get_active_event():
     try:
-        bot.delete_message(chat_id, message_id)
-    except ApiTelegramException as e:
-        logger.error(f"Delete message error: {e.description}")
+        response = requests.get(f"{API_URL}/events/")
+        if response.status_code == 200:
+            events = response.json()
+            for event in events:
+                if event.get("is_active"):
+                    return event
     except Exception as e:
-        logger.error(f"Unexpected delete error: {e}")
-
-# ==================== БАЗА ЛИДЕРОВ ====================
-conn = sqlite3.connect('leaders.db', check_same_thread=False)
-c = conn.cursor()
-c.execute('''CREATE TABLE IF NOT EXISTS leaders
-             (user_id INTEGER, username TEXT, theme TEXT, score INTEGER, max_score INTEGER, date TEXT)''')
-conn.commit()
-
-def save_score(user_id, username, theme, score, max_score):
-    c.execute("SELECT score FROM leaders WHERE user_id=? AND theme=?", (user_id, theme))
-    row = c.fetchone()
-    if not row or score > row[0]:
-        c.execute("REPLACE INTO leaders VALUES (?, ?, ?, ?, ?, ?)",
-                  (user_id, username or "Unknown", theme, score, max_score, datetime.now().strftime("%Y-%m-%d %H:%M")))
-        conn.commit()
-
-def get_top(theme="IT-основы", limit=10):
-    c.execute("SELECT username, score, max_score, date FROM leaders WHERE theme=? ORDER BY score DESC LIMIT ?", (theme, limit))
-    rows = c.fetchall()
-    if not rows:
-        return "Пока никто не играл 😔"
-    text = "🏆 Топ игроков (IT-основы):\n\n"
-    for i, row in enumerate(rows, 1):
-        text += f"{i}. {row[0]} — {row[1]}/{row[2]} очков ({row[3]})\n"
-    return text
-
-# ==================== ГЕНЕРАЦИЯ КВИЗА GIGACHAT ====================
-def generate_quiz_gigachat():
-    prompt = """
-Ты — идеальный генератор квизов. Сгенерируй ровно 5 новых, интересных вопросов по теме "IT-основы" (уровень начинающий/средний).
-Каждый вопрос: 4 варианта ответа, только один правильный. Индекс правильного ответа (correct) должен быть целым числом от 0 до 3 включительно.
-
-ВЕРНИ СТРОГО ТОЛЬКО JSON БЕЗ ЛИШНЕГО ТЕКСТА И БЕЗ ```json:
-
-{
-  "info": "🖥 *Квиз по IT-основам*\\n\\n5 вопросов • 10 секунд на ответ\\n+5 за правильный • 0 за неправильный • –3 за таймаут\\n\\nУдачи! 🚀",
-  "questions": [
-    {
-      "text": "Текст вопроса?",
-      "options": ["вариант 1", "вариант 2", "вариант 3", "вариант 4"],
-      "correct": 0
-    }
-    // ещё 4 вопроса
-  ]
-}
-"""
-
-    try:
-        with GigaChat(credentials=GIGACHAT_CREDENTIALS, verify_ssl_certs=False, scope="GIGACHAT_API_PERS") as giga:
-            response = giga.chat(prompt)
-        raw = response.choices[0].message.content.strip()
-
-        # Улучшенная обработка с использованием регулярных выражений для извлечения JSON
-        match = re.search(r'\{.*\}', raw, re.DOTALL)
-        if match:
-            json_str = match.group(0)
-            data = json.loads(json_str)
-            questions = data.get("questions", [])
-            if len(questions) == 5:
-                # Валидация и приведение correct к int
-                for q in questions:
-                    if "correct" in q:
-                        q["correct"] = int(q["correct"])
-                    if not isinstance(q.get("correct"), int) or not 0 <= q["correct"] < 4:
-                        raise ValueError(f"Invalid correct index: {q.get('correct')}")
-                logger.info("Новый квиз успешно получен от GigaChat")
-                return data
-        else:
-            raise ValueError("Не удалось извлечь JSON из ответа")
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON parse error: {e}")
-    except ValueError as e:
-        logger.error(f"Quiz validation error: {e}")
-    except Exception as e:
-        logger.error(f"GigaChat error: {e}")
+        logger.error(f"Event Error: {e}")
     return None
 
-# ==================== ЗАГРУЗКА КВИЗА (ИИ + fallback) ====================
-def load_quiz(chat_id):
-    safe_send(chat_id, "Генерирую квиз. Это может занять некоторое время.")
-    quiz = generate_quiz_gigachat()
-    if quiz:
-        return quiz
 
-    logger.warning("GigaChat недоступен — загружаем старый квиз")
-    return {
-        "info": "🖥 *Квиз по IT-основам*\n\n5 вопросов • 10 секунд на ответ\n+5 за правильный • 0 за неправильный • –3 за таймаут\n\nУдачи! 🚀",
-        "questions": [
-            {"text": "Что расшифровывается как CPU?", "options": ["Central Processing Unit", "Computer Personal Unit", "Central Power Unit", "Control Processing Unit"], "correct": 0},
-            {"text": "Кто изобрёл World Wide Web?", "options": ["Билл Гейтс", "Тим Бернерс-Ли", "Стив Джобс", "Марк Цукерберг"], "correct": 1},
-            {"text": "Какой протокол используется для веб-страниц?", "options": ["FTP", "SMTP", "HTTP", "SSH"], "correct": 2},
-            {"text": "Кто создал Python?", "options": ["Java", "JavaScript", "Гвидо ван Россум", "Ruby"], "correct": 2},
-            {"text": "SSD — это?", "options": ["Super Speed Drive", "Solid State Drive", "Secure System Disk", "Simple Storage Device"], "correct": 1},
-        ]
+def api_get_questions(event_id):
+    try:
+        response = requests.get(f"{API_URL}/events/{event_id}/questions/")
+        if response.status_code == 200:
+            return [
+                {
+                    "text": q["text"],
+                    "options": q["options"],
+                    "correct": q["correct_index"],
+                }
+                for q in response.json()
+            ]
+    except Exception as e:
+        logger.error(f"Questions Error: {e}")
+    return []
+
+
+def api_send_score(tg_id, score, event_id=None):
+    try:
+        payload = {"tg_id": tg_id, "score": score, "event_id": event_id}
+        requests.post(f"{API_URL}/submit-score/", json=payload)
+    except Exception as e:
+        logger.error(f"Score Error: {e}")
+
+
+def api_get_leaderboard(event_id):
+    try:
+        response = requests.get(f"{API_URL}/events/{event_id}/leaderboard/")
+        if response.status_code == 200:
+            data = response.json()
+            if not data:
+                return "Пока пусто 😔"
+            text = ""
+            medals = ["🥇", "🥈", "🥉"]
+            for i, r in enumerate(data):
+                medal = medals[i] if i < 3 else f"{i+1}."
+                text += f"{medal} {r['username']} — *{r['score']}*\n"
+            return text
+    except Exception as e:
+        logger.error(f"Leaderboard Error: {e}")
+        return "Ошибка загрузки."
+
+
+def api_get_profile(tg_id):
+    try:
+        response = requests.get(f"{API_URL}/bot-profile/{tg_id}/")
+        if response.status_code == 200:
+            return response.json()
+    except Exception as e:
+        logger.error(f"Profile Error: {e}")
+    return None
+
+
+# ==================== AI & STATE ====================
+def generate_quiz_gigachat():
+    """Генерация вопросов через GigaChat"""
+    if not GIGACHAT_CREDENTIALS:
+        logger.warning("GigaChat token is missing!")
+        return None
+
+    prompt = """
+    Ты генератор квизов. Создай 5 вопросов на тему IT (программирование, технологии).
+    Верни ТОЛЬКО валидный JSON (без Markdown, без ```json).
+    Формат:
+    {
+      "questions": [
+        {
+          "text": "Текст вопроса",
+          "options": ["Вариант 1", "Вариант 2", "Вариант 3", "Вариант 4"],
+          "correct": 0
+        }
+      ]
     }
+    Индекс correct должен быть от 0 до 3.
+    """
 
-# ==================== ХРАНИЛИЩА ====================
+    try:
+        with GigaChat(credentials=GIGACHAT_CREDENTIALS, verify_ssl_certs=False) as giga:
+            response = giga.chat(prompt)
+            raw_content = response.choices[0].message.content
+            logger.info("GigaChat Raw Response received")
+
+            # Очистка от Markdown (если модель вернет ```json ... ```)
+            match = re.search(r"\{.*\}", raw_content, re.DOTALL)
+            if match:
+                json_str = match.group(0)
+                data = json.loads(json_str)
+                return data.get("questions", [])
+            else:
+                logger.error("JSON pattern not found in AI response")
+                return None
+    except Exception as e:
+        logger.error(f"AI Generation Error: {e}")
+        return None
+
+
 user_data = {}
 rooms = {}
 quick_queue = []
 
-# ==================== МЕНЮ ====================
-def events_menu(chat_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    markup.add("Мероприятие 1", "Мероприятие 2", "Мероприятие 3")
-    markup.add("Информация о Skill Division")
-    safe_send(chat_id, "Выберите мероприятие:", reply_markup=markup)
 
-def main_menu(chat_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.add("🎮 Одиночная", "⚔ Дуэль")
-    markup.add("🏆 Топ игроков", "Информация о мероприятии")
-    markup.add("← К выбору мероприятия")
-    safe_send(chat_id, "🏠 Главное меню", reply_markup=markup)
-
-@bot.message_handler(commands=['start'])
+# ==================== МЕНЮ И ОБРАБОТЧИКИ ====================
+@bot.message_handler(commands=["start"])
 def start(m):
-    chat_id = m.chat.id
-    safe_send(chat_id, "Привет! 👋\nЭто квиз-бот с вопросами от GigaChat\nОдиночная игра и дуэль 1×1\n10 секунд на вопрос ⏱")
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    markup.add("Старт")
-    safe_send(chat_id, "Нажмите кнопку для начала:", reply_markup=markup)
+    api_register_user(m.from_user)
+    show_main_menu(
+        m.chat.id, "Добро пожаловать в Skill Division! 🚀\nГлавное меню:")
 
-# ==================== ОБРАБОТКА КНОПОК ====================
+
+def show_main_menu(chat_id, text):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add("🎮 Играть", "👤 Мой профиль")
+    markup.add("ℹ О мероприятии", "🏆 Топ игроков")
+    markup.add("📂 О проекте")
+    bot.send_message(chat_id, text, reply_markup=markup)
+
+
 @bot.message_handler(func=lambda m: True)
-def handler(m):
+def main_handler(m):
     chat_id = m.chat.id
     text = m.text
 
-    if text == "Старт":
-        events_menu(chat_id)
-    elif text == "Информация о Skill Division":
-        safe_send(chat_id, "Hello world!")
-        events_menu(chat_id)
-    elif text == "Мероприятие 1":
-        main_menu(chat_id)
-    elif text in ["Мероприятие 2", "Мероприятие 3"]:
-        safe_send(chat_id, "Это мероприятие в разработке.")
-        events_menu(chat_id)
-    elif text == "Информация о мероприятии":
-        safe_send(chat_id, "Hello world!")
-        main_menu(chat_id)
-    elif text == "🎮 Одиночная":
-        quiz = load_quiz(chat_id)
-        user_data[chat_id] = {"mode": "single", "quiz": quiz, "score": 0, "question_index": 0, "answered": False, "timer": None}
-        safe_send(chat_id, quiz["info"], parse_mode="Markdown")
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("🚀 Начать", callback_data="start_single"))
-        safe_send(chat_id, "Готов? Жми кнопку", reply_markup=markup)
+    # --- ГЛАВНОЕ МЕНЮ ИГРЫ ---
+    if text == "🎮 Играть":
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add("👤 Одиночная", "⚔ Дуэль", "🔙 Назад")
+        bot.send_message(chat_id, "Выберите режим игры:", reply_markup=markup)
 
+    # --- ОДИНОЧНАЯ (ВЫБОР ИСТОЧНИКА) ---
+    elif text == "👤 Одиночная":
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add("📅 Квиз события", "🤖 AI Квиз", "🔙 Назад")
+        bot.send_message(chat_id, "Откуда брать вопросы?", reply_markup=markup)
+
+    elif text == "📅 Квиз события":
+        start_single_game(chat_id, use_ai=False)
+
+    elif text == "🤖 AI Квиз":
+        bot.send_message(chat_id, "Генерирую вопросы, подождите... 🧠")
+        start_single_game(chat_id, use_ai=True)
+
+    # --- ДУЭЛЬ ---
     elif text == "⚔ Дуэль":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("🔒 По коду", "⚡ Быстрая дуэль", "← Назад")
-        safe_send(chat_id, "Режим дуэли:", reply_markup=markup)
+        markup.add("⚡ Быстрый поиск", "🔑 По коду",
+                   "Создать комнату", "🔙 Назад")
+        bot.send_message(chat_id, "Режим дуэли:", reply_markup=markup)
 
-    elif text == "🔒 По коду":
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("Создать комнату", "Присоединиться", "← Назад")
-        safe_send(chat_id, "Дуэль по коду:", reply_markup=markup)
+    # --- ИНФОРМАЦИЯ ---
+    elif text == "📂 О проекте":
+        info_text = (
+            "🚀 *Skill Division*\n\n"
+            "Интерактивная платформа для оценки навыков и проведения квизов на IT-мероприятиях.\n\n"
+            "🛠 *Стек технологий:*\n"
+            "— Backend: Django + DRF\n"
+            "— Frontend: React\n"
+            "— Bot: Python Telebot\n"
+            "— AI: GigaChat API\n\n"
+            "Создано для соревнований и обучения!"
+        )
+        bot.send_message(chat_id, info_text, parse_mode="Markdown")
 
-    elif text == "Создать комнату":
-        code = ''.join(random.choices(string.digits, k=4))
-        while code in rooms:
-            code = ''.join(random.choices(string.digits, k=4))
-        rooms[code] = {"players": [chat_id], "waiting": True}
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("Отмена")
-        safe_send(chat_id, f"Комната создана!\nКод: *{code}*\nЖдём второго игрока…", parse_mode="Markdown", reply_markup=markup)
+    elif text == "ℹ О мероприятии":
+        evt = api_get_active_event()
+        if evt:
+            evt_text = (
+                f"📅 *Текущее событие:*\n{evt['title']}\n\n"
+                f"📝 *Описание:*\n{evt.get('description', 'Без описания')}\n\n"
+                f"🔑 *Код доступа:* `{evt['event_code']}`\n"
+                f"📆 *Дата:* {evt['date']}"
+            )
+            bot.send_message(chat_id, evt_text, parse_mode="Markdown")
+        else:
+            bot.send_message(
+                chat_id, "Сейчас нет активных мероприятий. Заходите позже!"
+            )
 
-    elif text == "Присоединиться":
-        msg = safe_send(chat_id, "Введи 4-значный код:")
-        bot.register_next_step_handler(msg, join_by_code)
-
-    elif text == "⚡ Быстрая дуэль":
-        quick_match(chat_id)
+    elif text == "👤 Мой профиль":
+        profile = api_get_profile(chat_id)
+        if profile:
+            profile_text = (
+                f"👤 *Карточка участника*\n\n"
+                f"Никнейм: `{profile['username']}`\n"
+                f"Роль: {profile['role']}\n"
+                f"📅 Регистрация: {profile['date_joined']}\n\n"
+                f"📊 *Статистика:*\n"
+                f"Игр сыграно: {profile['games_played']}\n"
+                f"Всего очков: *{profile['total_score']}* ⭐"
+            )
+            bot.send_message(chat_id, profile_text, parse_mode="Markdown")
+        else:
+            bot.send_message(
+                chat_id, "Не удалось загрузить профиль. Попробуйте нажать /start"
+            )
 
     elif text == "🏆 Топ игроков":
-        safe_send(chat_id, get_top())
+        evt = api_get_active_event()
+        if evt:
+            bot.send_message(
+                chat_id,
+                f"🏆 Лидеры *{evt['title']}*:\n\n"
+                + str(api_get_leaderboard(evt["id"])),
+                parse_mode="Markdown",
+            )
+        else:
+            bot.send_message(chat_id, "Нет активных событий.")
 
-    elif text == "← К выбору мероприятия":
+    elif text == "🔙 Назад":
+        show_main_menu(chat_id, "Главное меню")
+
+    # --- ДУЭЛИ ЛОГИКА ---
+    elif text == "Создать комнату":
+        code = "".join(random.choices(string.digits, k=4))
+        rooms[code] = {"players": [chat_id], "waiting": True}
+        bot.send_message(
+            chat_id,
+            f"Комната создана!\nКод: `{code}`\nЖдем соперника...",
+            parse_mode="Markdown",
+        )
+
+    elif text == "🔑 По коду":
+        msg = bot.send_message(chat_id, "Введите 4-значный код:")
+        bot.register_next_step_handler(msg, join_room)
+
+    elif text == "⚡ Быстрый поиск":
         if chat_id in quick_queue:
-            quick_queue.remove(chat_id)
-        user_data.pop(chat_id, None)
-        events_menu(chat_id)
+            bot.send_message(chat_id, "Ты уже в очереди.")
+        elif quick_queue:
+            opponent = quick_queue.pop(0)
+            start_duel(opponent, chat_id)
+        else:
+            quick_queue.append(chat_id)
+            bot.send_message(chat_id, "Поиск соперника... ⏳")
 
-    elif text in ["Отмена", "← Назад"]:
-        if chat_id in quick_queue:
-            quick_queue.remove(chat_id)
-        user_data.pop(chat_id, None)
-        main_menu(chat_id)
 
-# ==================== БЫСТРАЯ ДУЭЛЬ И ПО КОДУ ====================
-def quick_match(chat_id):
-    if chat_id in quick_queue:
-        safe_send(chat_id, "Ты уже в очереди!")
+# ==================== ФУНКЦИИ ИГРЫ ====================
+
+
+def get_questions_logic(chat_id, use_ai=False):
+    """
+    Получает вопросы либо из БД (активный ивент), либо от AI.
+    """
+    evt_id = None
+    questions = []
+
+    # 1. Если выбран AI
+    if use_ai:
+        ai_questions = generate_quiz_gigachat()
+        if ai_questions:
+            return ai_questions, None  # None, так как ивент не привязан
+        else:
+            bot.send_message(
+                chat_id, "⚠️ AI недоступен. Загружаю резервные вопросы.")
+            # Fallback к обычным вопросам, если AI упал
+
+    # 2. Обычный режим (или fallback)
+    evt = api_get_active_event()
+    if evt:
+        questions = api_get_questions(evt["id"])
+        evt_id = evt["id"]
+
+    # 3. Полный Fallback (если и БД пустая)
+    if not questions:
+        questions = [
+            {
+                "text": "Какой язык мы изучаем?",
+                "options": ["Python", "Java", "C++", "Assembly"],
+                "correct": 0,
+            },
+            {
+                "text": "Что такое Django?",
+                "options": ["Фильм", "Фреймворк", "Еда", "Остров"],
+                "correct": 1,
+            },
+        ]
+
+    return questions, evt_id
+
+
+def start_single_game(chat_id, use_ai=False):
+    questions, evt_id = get_questions_logic(chat_id, use_ai)
+
+    if not questions:
+        bot.send_message(chat_id, "Не удалось получить вопросы.")
         return
-    if quick_queue:
-        opponent = quick_queue.pop(0)
-        code = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-        quiz = load_quiz(chat_id)
-        rooms[code] = {"players": [opponent, chat_id], "quiz": quiz, "current": 0, "scores": {opponent: 0, chat_id: 0}, "answered": set(), "timer": None}
-        for pid in [opponent, chat_id]:
-            user_data.pop(pid, None)
-            safe_send(pid, quiz["info"], parse_mode="Markdown")
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton("🚀 Готов! Начать", callback_data=f"start_duel_{code}"))
-            safe_send(pid, "Соперник найден! Жми когда готов", reply_markup=markup)
-    else:
-        quick_queue.append(chat_id)
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("Отмена")
-        safe_send(chat_id, "Ищем соперника… ⏳", reply_markup=markup)
 
-def join_by_code(m):
-    code = m.text.strip()
-    if code not in rooms or len(rooms[code]["players"]) == 2:
-        safe_send(m.chat.id, "Код неверный или комната полная")
-        main_menu(m.chat.id)
+    user_data[chat_id] = {
+        "mode": "single",
+        "questions": questions,
+        "score": 0,
+        "index": 0,
+        "event_id": evt_id,
+    }
+    ask_question(chat_id)
+
+
+def ask_question(chat_id):
+    data = user_data.get(chat_id)
+    if not data:
         return
-    rooms[code]["players"].append(m.chat.id)
-    quiz = load_quiz(m.chat.id)
-    rooms[code]["quiz"] = quiz
-    rooms[code]["waiting"] = False
-    rooms[code]["current"] = 0
-    rooms[code]["scores"] = {p: 0 for p in rooms[code]["players"]}
-    rooms[code]["answered"] = set()
-
-    for pid in rooms[code]["players"]:
-        safe_send(pid, quiz["info"], parse_mode="Markdown")
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("🚀 Готов! Начать", callback_data=f"start_duel_{code}"))
-        safe_send(pid, "Соперник подключился! Жми когда готов", reply_markup=markup)
-
-# ==================== ОДИНОЧКА ====================
-@bot.callback_query_handler(func=lambda c: c.data == "start_single")
-def start_single(call):
-    safe_delete(call.message.chat.id, call.message.message_id)
-    ask_question_single(call.message.chat.id)
-
-def ask_question_single(chat_id):
-    user = user_data.get(chat_id)
-    if not user or user["question_index"] >= 5:
-        end_single(chat_id)
+    if data["index"] >= len(data["questions"]):
+        end_single_game(chat_id)
         return
-    q = user["quiz"]["questions"][user["question_index"]]
+    q = data["questions"][data["index"]]
     markup = types.InlineKeyboardMarkup(row_width=2)
-    for i, opt in enumerate(q["options"]):
-        markup.add(types.InlineKeyboardButton(opt, callback_data=f"single_ans_{i}"))
-    safe_send(chat_id, f"Вопрос {user['question_index']+1}/5\n\n{q['text']}", reply_markup=markup)
+    markup.add(
+        *[
+            types.InlineKeyboardButton(opt, callback_data=f"ans_{i}")
+            for i, opt in enumerate(q["options"])
+        ]
+    )
+    bot.send_message(
+        chat_id, f"Вопрос {data['index']+1}:\n{q['text']}", reply_markup=markup
+    )
 
-    user["answered"] = False
-    timer = threading.Timer(10.0, lambda: single_timeout(chat_id))
-    timer.start()
-    user["timer"] = timer
 
-def single_timeout(chat_id):
-    user = user_data.get(chat_id)
-    if user and not user["answered"]:
-        user["answered"] = True
-        user["score"] -= 3
-        safe_send(chat_id, "Время вышло! –3 очка")
-        next_single(chat_id)
+def end_single_game(chat_id):
+    data = user_data[chat_id]
 
-@bot.callback_query_handler(func=lambda c: c.data.startswith("single_ans_"))
-def single_answer(call):
-    user = user_data.get(call.message.chat.id)
-    if not user or user["answered"]:
-        return
-    user["answered"] = True
-    if user["timer"]:
-        user["timer"].cancel()
-    q = user["quiz"]["questions"][user["question_index"]]
-    choice = int(call.data.split("_")[2])
-    correct = q["correct"]
-    if choice == correct:
-        user["score"] += 5
-        bot.answer_callback_query(call.id, "Верно! +5 ✅")
-    else:
-        correct_opt = q["options"][correct]
-        bot.answer_callback_query(call.id, f"Неправильно. Правильный ответ: {correct_opt} ❌")
-    next_single(call.message.chat.id)
+    # Отправляем очки на бэкенд (если это был AI квиз, event_id будет None,
+    # бэкенд сохранит это как "без привязки к ивенту" или надо обработать это в Django,
+    # но пока отправим как есть, главное сохранить score в профиль юзера)
+    api_send_score(chat_id, data["score"], data["event_id"])
 
-def next_single(chat_id):
-    user_data[chat_id]["question_index"] += 1
-    threading.Timer(1.5, lambda: ask_question_single(chat_id)).start()
-
-def end_single(chat_id):
-    user = user_data[chat_id]
-    save_score(chat_id, bot.get_chat(chat_id).first_name or "Unknown", "IT-основы", user["score"], 25)
-    text = f"Квиз завершён!\nВаш результат: *{user['score']}*/25 очков 👏"
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("Главное меню", callback_data="to_main"))
-    safe_send(chat_id, text, parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(
+        chat_id, f"🏁 Результат: {data['score']} очков! Данные сохранены.")
     del user_data[chat_id]
+    show_main_menu(chat_id, "Игра окончена.")
 
-# ==================== ДУЭЛЬ ====================
-@bot.callback_query_handler(func=lambda c: c.data.startswith("start_duel_"))
-def start_duel(call):
-    code = call.data.split("_")[2]
-    if code not in rooms:
+
+# Дуэли (используют вопросы только из БД для честности)
+def join_room(m):
+    code = m.text.strip()
+    if code in rooms and rooms[code]["waiting"]:
+        p1 = rooms[code]["players"][0]
+        del rooms[code]
+        start_duel(p1, m.chat.id)
+    else:
+        bot.send_message(m.chat.id, "Ошибка кода.")
+
+
+def start_duel(p1, p2):
+    room_id = f"duel_{p1}_{p2}"
+    # В дуэли всегда берем вопросы из БД (use_ai=False), чтобы было честно
+    questions, evt_id = get_questions_logic(p1, use_ai=False)
+
+    rooms[room_id] = {
+        "players": [p1, p2],
+        "scores": {p1: 0, p2: 0},
+        "questions": questions,
+        "event_id": evt_id,
+        "current": 0,
+        "answers": 0,
+    }
+    for p in [p1, p2]:
+        user_data[p] = {"mode": "duel", "room_id": room_id}
+        bot.send_message(p, "⚔ Бой!")
+    ask_duel_question(room_id)
+
+
+def ask_duel_question(room_id):
+    room = rooms.get(room_id)
+    if not room or room["current"] >= len(room["questions"]):
+        end_duel(room_id)
         return
-    room = rooms[code]
-    room["answered"].add(call.message.chat.id)
-    safe_delete(call.message.chat.id, call.message.message_id)
-
-    if len(room["answered"]) == 2:
-        room["answered"] = set()
-        ask_question_duel(code)
-
-def ask_question_duel(code):
-    room = rooms[code]
-    idx = room["current"]
-    q = room["quiz"]["questions"][idx]
+    q = room["questions"][room["current"]]
     markup = types.InlineKeyboardMarkup(row_width=2)
-    for i, opt in enumerate(q["options"]):
-        markup.add(types.InlineKeyboardButton(opt, callback_data=f"ans_{code}_{i}"))
+    markup.add(
+        *[
+            types.InlineKeyboardButton(opt, callback_data=f"duel_{i}")
+            for i, opt in enumerate(q["options"])
+        ]
+    )
+    room["answers"] = 0
+    for p in room["players"]:
+        bot.send_message(p, q["text"], reply_markup=markup)
 
-    scores_text = "\n\nОчки: " + " | ".join(f"{bot.get_chat(p).first_name}: {room['scores'][p]}" for p in room["players"])
-    text = f"Вопрос {idx+1}/5\n\n{q['text']}{scores_text}"
 
-    for pid in room["players"]:
-        safe_send(pid, text, reply_markup=markup)
-
-    room["timer"] = threading.Timer(10.0, lambda: duel_timeout(code))
-    room["timer"].start()
-
-def duel_timeout(code):
-    if code not in rooms:
-        return
-    room = rooms[code]
-    for pid in room["players"]:
-        if pid not in room["answered"]:
-            room["scores"][pid] -= 3
-            safe_send(pid, "Время вышло! –3 очка")
-    next_duel_question(code)
-
-@bot.callback_query_handler(func=lambda c: c.data.startswith("ans_"))
-def duel_answer(call):
-    parts = call.data.split("_")
-    code = parts[1]
-    choice = int(parts[2])
-    chat_id = call.message.chat.id
-    if code not in rooms:
-        return
-    room = rooms[code]
-    if chat_id in room["answered"]:
-        return
-    room["answered"].add(chat_id)
-
-    q = room["quiz"]["questions"][room["current"]]
-    correct = q["correct"]
-    if choice == correct:
-        room["scores"][chat_id] += 5
-        bot.answer_callback_query(call.id, "Верно! +5 ✅")
-    else:
-        correct_opt = q["options"][correct]
-        bot.answer_callback_query(call.id, f"Неправильно. Правильный ответ: {correct_opt} ❌")
-
-    if len(room["answered"]) == 2:
-        room["timer"].cancel()
-        next_duel_question(code)
-
-def next_duel_question(code):
-    room = rooms[code]
-    room["current"] += 1
-    room["answered"] = set()
-    if room["current"] >= 5:
-        end_duel(code)
-    else:
-        threading.Timer(2.0, lambda: ask_question_duel(code)).start()
-
-def end_duel(code):
-    room = rooms[code]
+def end_duel(room_id):
+    room = rooms[room_id]
     p1, p2 = room["players"]
     s1, s2 = room["scores"][p1], room["scores"][p2]
-    name1 = bot.get_chat(p1).first_name
-    name2 = bot.get_chat(p2).first_name
+    api_send_score(p1, s1, room["event_id"])
+    api_send_score(p2, s2, room["event_id"])
+    winner = "Ничья" if s1 == s2 else ("Игрок 1" if s1 > s2 else "Игрок 2")
+    msg = f"🏁 Конец! {s1} : {s2}\nПобедил: {winner}"
+    for p in room["players"]:
+        bot.send_message(p, msg)
+        del user_data[p]
+        show_main_menu(p, "Главное меню")
+    del rooms[room_id]
 
-    save_score(p1, name1, "IT-основы", s1, 25)
-    save_score(p2, name2, "IT-основы", s2, 25)
 
-    winner = "Ничья!" if s1 == s2 else f"Победил {name1 if s1 > s2 else name2}! 🎉"
-    result = f"Дуэль окончена!\n{winner}\n\n{name1}: {s1}/25\n{name2}: {s2}/25"
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("Главное меню", callback_data="to_main"))
-    for pid in room["players"]:
-        safe_send(pid, result, reply_markup=markup)
-    del rooms[code]
-
-# ==================== ВОЗВРАТ В МЕНЮ ====================
-@bot.callback_query_handler(func=lambda c: c.data == "to_main")
-def to_main(call):
+# Callbacks
+@bot.callback_query_handler(func=lambda c: True)
+def answer_handler(call):
     chat_id = call.message.chat.id
-    safe_delete(chat_id, call.message.message_id)
-    bot.answer_callback_query(call.id)
-    user_data.pop(chat_id, None)
-    if chat_id in quick_queue:
-        quick_queue.remove(chat_id)
-    main_menu(chat_id)
+    udata = user_data.get(chat_id)
+    if not udata:
+        return
+    try:
+        bot.edit_message_reply_markup(
+            chat_id, call.message.message_id, reply_markup=None
+        )
+    except Exception as e:
+        logger.debug(f"Edit markup failed: {e}")
 
-# ==================== ЗАПУСК ====================
-if __name__ == '__main__':
-    logger.info("Бот запущен! Вопросы генерирует GigaChat")
+    if udata["mode"] == "single" and call.data.startswith("ans_"):
+        choice = int(call.data.split("_")[1])
+        q = udata["questions"][udata["index"]]
+        if choice == q["correct"]:
+            udata["score"] += 5
+        udata["index"] += 1
+        threading.Timer(0.5, ask_question, args=[chat_id]).start()
+
+    elif udata["mode"] == "duel" and call.data.startswith("duel_"):
+        room = rooms.get(udata["room_id"])
+        if not room:
+            return
+        choice = int(call.data.split("_")[1])
+        q = room["questions"][room["current"]]
+        if choice == q["correct"]:
+            room["scores"][chat_id] += 5
+        room["answers"] += 1
+        if room["answers"] >= 2:
+            room["current"] += 1
+            threading.Timer(0.5, ask_duel_question, args=[
+                            udata["room_id"]]).start()
+
+
+if __name__ == "__main__":
+    logger.info("Bot Started!")
     bot.infinity_polling()
