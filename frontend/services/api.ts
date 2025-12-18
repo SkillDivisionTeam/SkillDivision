@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 import { Event, EventStats, User } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
 
 // === Базовая функция запроса с Токеном ===
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
