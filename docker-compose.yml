@@ -25,10 +25,10 @@ services:
     volumes:
       - ./frontend:/app             # Hot Reload
       - /app/node_modules           # Изоляция зависимостей контейнера
-#    environment:
-#      - VITE_API_URL=http://localhost:8000/api/
-#    depends_on:
-#      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/
+    depends_on:
+      - backend
     restart: unless-stopped
 
   # Telegram Bot
@@ -37,8 +37,8 @@ services:
     container_name: skill_bot
     env_file:
       - .env
-#    depends_on:
-#      - backend
+    depends_on:
+      - backend
     restart: unless-stopped
 
   # База данных PostgreSQL
