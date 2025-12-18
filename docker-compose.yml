@@ -26,7 +26,7 @@ services:
       - ./frontend:/app             # Hot Reload
       - /app/node_modules           # Изоляция зависимостей контейнера
     environment:
-      - VITE_API_URL=http://localhost:8000/api/
+      - VITE_API_URL=http://localhost:8000/api
     depends_on:
       - backend
     restart: unless-stopped
