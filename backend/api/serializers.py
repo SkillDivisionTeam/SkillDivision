@@ -1,5 +1,6 @@
-from rest_framework import serializers
 from django.contrib.auth.models import User
+from rest_framework import serializers
+
 from .models import Event, Question, QuizResult
 
 
@@ -18,9 +19,10 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = "__all__"
 
-    def get_participants_count(self, obj):
-        # Считаем уникальных участников, сдавших результаты
-        return QuizResult.objects.filter(event=obj).values("user").distinct().count()
+    def get_participants_count(self, obj: Event) -> int:
+        # Считаем уникальных участников
+        qs = QuizResult.objects.filter(event=obj)
+        return int(qs.values("user").distinct().count())
 
 
 class QuestionSerializer(serializers.ModelSerializer):

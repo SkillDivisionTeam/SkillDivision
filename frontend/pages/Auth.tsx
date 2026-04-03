@@ -31,8 +31,9 @@ const Auth: React.FC<AuthPageProps> = ({ type, onLogin }) => {
         alert("Регистрация доступна только через администратора или бота. Попробуйте войти.");
         // В будущем можно добавить эндпоинт /register/ на бэкенде
       }
-    } catch (err: any) {
-      setError(err.message || 'Ошибка авторизации. Проверьте логин и пароль.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Ошибка авторизации. Проверьте логин и пароль.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -50,8 +51,8 @@ const Auth: React.FC<AuthPageProps> = ({ type, onLogin }) => {
             {type === 'login' ? 'С возвращением' : 'Создание аккаунта'}
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            {type === 'login' 
-              ? 'Введите свои данные для доступа к панели управления.' 
+            {type === 'login'
+              ? 'Введите свои данные для доступа к панели управления.'
               : 'Присоединяйтесь к сообществу Skill Division сегодня.'}
           </p>
         </div>
@@ -67,7 +68,7 @@ const Auth: React.FC<AuthPageProps> = ({ type, onLogin }) => {
               onChange={handleChange}
               placeholder="Например: organizer_demo"
             />
-            
+
             {type === 'register' && (
                <Input
                label="Email"

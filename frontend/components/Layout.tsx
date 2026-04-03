@@ -39,7 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
               <Link to="/about" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/about') ? 'text-primary-400' : 'text-slate-300 hover:text-white'}`}>
                 О нас
               </Link>
-              
+
               {user ? (
                 <>
                   <Link to="/events" className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${isActive('/events') ? 'text-primary-400' : 'text-slate-300 hover:text-white'}`}>

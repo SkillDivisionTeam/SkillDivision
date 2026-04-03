@@ -5,8 +5,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY", "django-insecure-change-me-please")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-change-me-please")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -72,7 +71,9 @@ DATABASES = {
         "NAME": os.environ.get("POSTGRES_DB", "skilldivision"),
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
-        "HOST": "db",  # Имя сервиса в docker-compose
+        "HOST": os.environ.get(
+            "POSTGRES_HOST", "db"
+        ),  # Имя сервиса в docker-compose, или localhost для CI
         "PORT": "5432",
     }
 }

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Profile, Event, Question, QuizResult
+
+from .models import Event, Profile, Question, QuizResult
 
 
 @admin.register(Event)

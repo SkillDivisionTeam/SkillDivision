@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Hash, 
-  Download, 
-  Activity, 
-  Trophy, 
-  PieChart as PieChartIcon, 
-  Loader2 
+import {
+  ArrowLeft,
+  Calendar,
+  Hash,
+  Download,
+  Activity,
+  Trophy,
+  PieChart as PieChartIcon,
+  Loader2
 } from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  Tooltip as RechartsTooltip, 
-  Legend 
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip,
+  Legend
 } from 'recharts';
 import { Button, Card, Badge } from '../components/UI';
 import { getEventById, getEventStats } from '../services/api';
@@ -34,7 +34,7 @@ const EventDetails: React.FC = () => {
       try {
         const eventData = await getEventById(Number(id));
         const statsData = await getEventStats(Number(id));
-        
+
         if (eventData) {
           setEvent(eventData);
           setStats(statsData);
@@ -73,7 +73,7 @@ const EventDetails: React.FC = () => {
         <Link to="/events" className="inline-flex items-center text-slate-400 hover:text-white mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1" /> Назад к списку
         </Link>
-        
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -89,7 +89,7 @@ const EventDetails: React.FC = () => {
               </span>
             </div>
           </div>
-          
+
           <Button variant="secondary" onClick={() => alert("Функция экспорта в CSV будет доступна в полной версии")}>
             <Download className="w-4 h-4 mr-2" /> Скачать отчет
           </Button>
@@ -98,7 +98,7 @@ const EventDetails: React.FC = () => {
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        
+
         {/* Real-time Status */}
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="relative overflow-hidden">
@@ -153,9 +153,9 @@ const EventDetails: React.FC = () => {
                     {stats.leaderboard.map((user, index) => (
                         <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-800">
                             <div className="flex items-center gap-3">
-                                <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold 
-                                    ${index === 0 ? 'bg-yellow-500/20 text-yellow-400' : 
-                                      index === 1 ? 'bg-slate-300/20 text-slate-300' : 
+                                <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold
+                                    ${index === 0 ? 'bg-yellow-500/20 text-yellow-400' :
+                                      index === 1 ? 'bg-slate-300/20 text-slate-300' :
                                       index === 2 ? 'bg-amber-700/20 text-amber-600' : 'bg-slate-800 text-slate-500'}`}>
                                     {index + 1}
                                 </div>

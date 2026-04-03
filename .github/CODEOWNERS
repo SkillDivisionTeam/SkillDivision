@@ -1,0 +1,31 @@
+# CODEOWNERS для Skill Division
+# Эти владельцы будут запрошены для ревью, когда кто-то открывает pull request,
+# который изменяет файлы в их зоне ответственности.
+#
+# Подробнее см.:
+# https://docs.github.com/en/repositories/working-with-files/managing-files/about-code-owners
+
+# Владельцы по умолчанию для всего в репозитории (если не переопределено ниже)
+* @devops-engineer
+
+# Зона ответственности Backend
+/backend/ @backend-developer
+/backend/api/ @backend-developer @bot-developer
+/backend/skill_division/ @backend-developer
+
+# Зона ответственности Frontend
+/frontend/ @frontend-developer
+
+# Зона ответственности Bot
+/bot/ @bot-developer @backend-developer
+
+# Зона ответственности Infrastructure
+/docker-compose.yml @devops-engineer @backend-developer
+/.github/ @devops-engineer
+/.env.example @devops-engineer
+
+# Зона ответственности Documentation
+/docs/ @devops-engineer
+/docs/ru/ @devops-engineer
+/CONTRIBUTING.md @devops-engineer
+/README.md @devops-engineer

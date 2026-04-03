@@ -21,20 +21,20 @@ const About: React.FC = () => {
             в то время как Frontend (React + Vite) и Telegram-бот действуют как специализированные клиенты, общающиеся через REST API.
           </p>
           <ul className="space-y-4">
-            <ArchitectureItem 
-              icon={<Database className="text-blue-400" />} 
-              title="PostgreSQL & Django" 
-              desc="Централизованное хранение данных и движок бизнес-логики." 
+            <ArchitectureItem
+              icon={<Database className="text-blue-400" />}
+              title="PostgreSQL & Django"
+              desc="Централизованное хранение данных и движок бизнес-логики."
             />
-            <ArchitectureItem 
-              icon={<Smartphone className="text-green-400" />} 
-              title="Telegram-бот" 
-              desc="«Тонкий клиент» для участников, чтобы проходить квизы на ходу." 
+            <ArchitectureItem
+              icon={<Smartphone className="text-green-400" />}
+              title="Telegram-бот"
+              desc="«Тонкий клиент» для участников, чтобы проходить квизы на ходу."
             />
-            <ArchitectureItem 
-              icon={<Globe className="text-purple-400" />} 
-              title="React+Vite Frontend" 
-              desc="Веб-интерфейс для организаторов, HR и аналитики." 
+            <ArchitectureItem
+              icon={<Globe className="text-purple-400" />}
+              title="React+Vite Frontend"
+              desc="Веб-интерфейс для организаторов, HR и аналитики."
             />
           </ul>
         </div>

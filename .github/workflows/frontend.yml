@@ -2,41 +2,112 @@ name: Frontend CI
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [main, develop]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend.yml'
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [main, develop]
     paths:
       - 'frontend/**'
+      - '.github/workflows/frontend.yml'
 
-permissions:
-  contents: read
+env:
+  NODE_VERSION: '20'
 
 jobs:
-  build-and-lint:
+  lint:
+    name: Линтинг и проверка типов
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js 20.11
-        uses: actions/setup-node@v3
+      - name: Настройка Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: "20.11.0"
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
-        # npm ci удаляет node_modules и ставит строго по package-lock.json
-        run: npm ci
+      - name: Установка зависимостей
+        run: |
+          cd frontend
+          npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Запуск ESLint
+        run: |
+          cd frontend
+          npm run lint
 
-      - name: Type Check & Build
-        run: npm run build
+      - name: Проверка типов TypeScript
+        run: |
+          cd frontend
+          npx tsc --noEmit
+
+  test:
+    name: Запуск тестов
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Настройка Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Установка зависимостей
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Установка зависимостей для тестов
+        run: |
+          cd frontend
+          npm install --save-dev vitest @vitest/coverage-v8 @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom
+
+      - name: Запуск тестов
+        run: |
+          cd frontend
+          npx vitest run --coverage --passWithNoTests
+
+      - name: Загрузка отчёта о покрытии в Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./frontend/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+          fail_ci_if_error: false
+
+  build:
+    name: Сборка продакшн-версии
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Настройка Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Установка зависимостей
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Сборка
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Загрузка артефактов сборки
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 7

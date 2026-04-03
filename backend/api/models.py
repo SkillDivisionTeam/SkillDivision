@@ -1,5 +1,5 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
 
 
 class Profile(models.Model):
@@ -10,14 +10,12 @@ class Profile(models.Model):
         ("admin", "Администратор"),
         ("hr", "HR"),
     )
-    user = models.OneToOneField(
-        User, on_delete=models.CASCADE, related_name="profile")
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     tg_id = models.BigIntegerField(unique=True, null=True, blank=True)
-    role = models.CharField(
-        max_length=20, choices=ROLES, default="participant")
+    role = models.CharField(max_length=20, choices=ROLES, default="participant")
     avatar = models.URLField(blank=True, null=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user.username} ({self.role})"
 
 
@@ -29,7 +27,7 @@ class Event(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.title} ({self.event_code})"
 
 
@@ -46,13 +44,11 @@ class Question(models.Model):
     options = models.JSONField(
         help_text="Список вариантов ответов ['А', 'Б', 'В', 'Г']"
     )
-    correct_index = models.IntegerField(
-        help_text="Индекс правильного ответа (0-3)")
+    correct_index = models.IntegerField(help_text="Индекс правильного ответа (0-3)")
     topic = models.CharField(max_length=100, default="General IT")
-    difficulty = models.CharField(
-        max_length=10, choices=DIFFICULTY, default="medium")
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY, default="medium")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.text[:50]}..."
 
 

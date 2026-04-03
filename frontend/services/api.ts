@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { Event, EventStats, User } from '../types';
+import { Event, EventStats, User, UserRole } from '../types';
 
 const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 const API_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
@@ -8,9 +8,9 @@ const API_URL = rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl;
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('auth_token');
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers as any || {},
+    ...(options.headers as Record<string, string> || {}),
   };
 
   // Если токен есть, прикрепляем его
@@ -80,7 +80,7 @@ export const login = async (username: string, password?: string): Promise<User> 
     id: response.user_id,
     username: response.username,
     email: response.email,
-    role: response.role as any,
+    role: response.role as UserRole,
     // Генерируем аватарку, так как на бэке пока нет загрузки файлов
     avatar: `https://ui-avatars.com/api/?name=${response.username}&background=0D8ABC&color=fff`
   };
