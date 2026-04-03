@@ -85,7 +85,7 @@ def api_get_leaderboard(event_id):
             text = ""
             medals = ["🥇", "🥈", "🥉"]
             for i, r in enumerate(data):
-                medal = medals[i] if i < 3 else f"{i+1}."
+                medal = medals[i] if i < 3 else f"{i + 1}."
                 text += f"{medal} {r['username']} — *{r['score']}*\n"
             return text
     except Exception as e:
@@ -359,7 +359,7 @@ def ask_question(chat_id):
         ]
     )
     bot.send_message(
-        chat_id, f"Вопрос {data['index']+1}:\n{q['text']}", reply_markup=markup
+        chat_id, f"Вопрос {data['index'] + 1}:\n{q['text']}", reply_markup=markup
     )
 
 
