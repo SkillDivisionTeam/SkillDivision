@@ -1,7 +1,7 @@
 # Skill Division: Team Organization & CI/CD Assessment
 
-**Date:** 2026-04-03  
-**Author:** Senior Engineering Manager  
+**Date:** 2026-04-03
+**Author:** Senior Engineering Manager
 **Status:** Draft for Review
 
 ---
@@ -532,9 +532,9 @@ Closes #
 ## Changes Made
 
 <!-- List the specific changes made in this PR -->
-- 
-- 
-- 
+-
+-
+-
 
 ## Testing
 
@@ -739,11 +739,11 @@ class TestEventAPI:
     def test_list_events(self, api_client, sample_event):
         url = reverse('event-list')
         response = api_client.get(url)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert len(response.json()) == 1
         assert response.json()[0]['title'] == "Test Event"
-    
+
     def test_create_event(self, api_client):
         url = reverse('event-list')
         data = {
@@ -752,14 +752,14 @@ class TestEventAPI:
             'event_code': 'NEW01'
         }
         response = api_client.post(url, data, format='json')
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert response.json()['title'] == 'New Event'
-    
+
     def test_get_active_event(self, api_client, sample_event):
         url = reverse('event-active')
         response = api_client.get(url)
-        
+
         assert response.status_code == status.HTTP_200_OK
         assert response.json()['is_active'] is True
 ```
@@ -779,14 +779,14 @@ describe('Layout', () => {
         <div data-testid="child">Test Content</div>
       </Layout>
     );
-    
+
     expect(screen.getByTestId('child')).toBeInTheDocument();
     expect(screen.getByText('Test Content')).toBeInTheDocument();
   });
 
   it('renders navigation', () => {
     render(<Layout><div /></Layout>);
-    
+
     expect(screen.getByRole('navigation')).toBeInTheDocument();
   });
 });
@@ -805,22 +805,22 @@ class TestAPIClient:
     def test_api_register_user_success(self, mock_post):
         mock_post.return_value.status_code = 200
         mock_user = MagicMock(id=12345, username='testuser')
-        
+
         from bot import api_register_user
         api_register_user(mock_user)
-        
+
         mock_post.assert_called_once()
         call_args = mock_post.call_args
         assert 'bot-auth' in call_args[0][0]
         assert call_args[1]['json']['tg_id'] == 12345
-    
+
     @patch('requests.get')
     def test_api_get_active_event_returns_none_on_error(self, mock_get):
         mock_get.side_effect = requests.exceptions.ConnectionError
-        
+
         from bot import api_get_active_event
         result = api_get_active_event()
-        
+
         assert result is None
 ```
 

@@ -35,7 +35,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={user ? <Navigate to="/events" /> : <Landing />} />
           <Route path="/about" element={<About />} />
-          
+
           <Route path="/login" element={
             user ? <Navigate to="/events" /> : <Auth type="login" onLogin={handleLogin} />
           } />
@@ -49,7 +49,7 @@ const App: React.FC = () => {
               <Events />
             </ProtectedRoute>
           } />
-          
+
           <Route path="/events/new" element={
             <ProtectedRoute>
               <CreateEvent />
@@ -61,7 +61,7 @@ const App: React.FC = () => {
               <EventDetails />
             </ProtectedRoute>
           } />
-          
+
           <Route path="/profile" element={
             <ProtectedRoute>
               <Profile user={user!} />

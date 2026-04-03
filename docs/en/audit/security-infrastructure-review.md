@@ -1,8 +1,8 @@
 # Skill Division - Security & Infrastructure Review
 
-**Date:** 2026-04-03  
-**Reviewer:** Senior Security Engineer / DevOps Specialist  
-**Scope:** Full stack security audit (Docker, Django, API, Bot, Frontend, Infrastructure)  
+**Date:** 2026-04-03
+**Reviewer:** Senior Security Engineer / DevOps Specialist
+**Scope:** Full stack security audit (Docker, Django, API, Bot, Frontend, Infrastructure)
 **Risk Rating Scale:** CRITICAL / HIGH / MEDIUM / LOW / INFO
 
 ---
@@ -66,19 +66,19 @@ services:
     # Remove ports - only accessible via Nginx
     expose:
       - "8000"
-  
+
   db:
     networks:
       - backend_net  # Internal only
     # REMOVE: ports: - "5432:5432"
-  
+
   pgadmin:
     networks:
       - backend_net  # Internal only, or restrict via firewall
     # REMOVE: ports: - "5050:80" or restrict to localhost
     ports:
       - "127.0.0.1:5050:80"  # Only accessible from host localhost
-  
+
   frontend:
     networks:
       - frontend_net
@@ -115,7 +115,7 @@ pgadmin:
 db:
   # Remove ports entirely for production - only backend needs access
   # Docker internal DNS handles connectivity
-  
+
 pgadmin:
   # Bind to localhost only
   ports:
@@ -167,7 +167,7 @@ services:
         reservations:
           cpus: '0.25'
           memory: 128M
-  
+
   db:
     deploy:
       resources:
@@ -177,7 +177,7 @@ services:
         reservations:
           cpus: '0.5'
           memory: 256M
-  
+
   frontend:
     deploy:
       resources:
@@ -276,7 +276,7 @@ ALLOWED_HOSTS = ["*"]
 
 ```python
 ALLOWED_HOSTS = os.environ.get(
-    "DJANGO_ALLOWED_HOSTS", 
+    "DJANGO_ALLOWED_HOSTS",
     "localhost,127.0.0.1"
 ).split(",")
 ```
@@ -436,7 +436,7 @@ PASSWORD_HASHERS = [
 ```python
 class EventViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    
+
     @action(detail=True, methods=["get"])
     def questions(self, request, pk=None):
         # Only return questions without correct_index for participants
@@ -459,7 +459,7 @@ class ResultView(views.APIView):
     def post(self, request):
         score = request.data.get("score")  # No validation!
         max_score = request.data.get("max_score", 25)
-        
+
         QuizResult.objects.create(
             user=user, event=event, score=score, max_score=max_score
         )
@@ -479,23 +479,23 @@ class ResultView(views.APIView):
     def post(self, request):
         score = request.data.get("score")
         max_score = request.data.get("max_score", 25)
-        
+
         # Validation
         if score is None or max_score is None:
             return Response({"error": "score and max_score required"}, status=400)
-        
+
         try:
             score = int(score)
             max_score = int(max_score)
         except (ValueError, TypeError):
             return Response({"error": "Invalid score format"}, status=400)
-        
+
         if score < 0:
             return Response({"error": "Score cannot be negative"}, status=400)
-        
+
         if score > max_score:
             return Response({"error": "Score cannot exceed max_score"}, status=400)
-        
+
         if max_score > 1000:  # Reasonable upper bound
             return Response({"error": "max_score too large"}, status=400)
 ```
@@ -692,7 +692,7 @@ def api_send_score(tg_id, score, event_id=None):
     try:
         payload = {"tg_id": tg_id, "score": score, "event_id": event_id}
         response = requests.post(
-            f"{API_URL}/submit-score/", 
+            f"{API_URL}/submit-score/",
             json=payload,
             timeout=10
         )
@@ -752,7 +752,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 # backend/api/views.py
 class GenerateQuizView(views.APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         event_title = request.data.get("event_title", "")
         # Call Gemini server-side
@@ -983,7 +983,7 @@ http {
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
-            
+
             # WebSocket support (for Vite HMR in dev)
             proxy_http_version 1.1;
             proxy_set_header Upgrade $http_upgrade;
@@ -1403,7 +1403,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -1411,12 +1411,12 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
-      
+
       - name: Run Bandit (Python security linter)
         run: |
           pip install bandit
           bandit -r backend/ -f json -o bandit-results.json
-      
+
       - name: Run npm audit
         working-directory: ./frontend
         run: npm audit --audit-level=high
@@ -1427,7 +1427,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Deploy to production
         run: |
           docker-compose -f docker-compose.prod.yml up -d --build
@@ -1460,7 +1460,7 @@ jobs:
                                                            │  :5432       │
                                                            │  (internal)  │
                                                            └─────────────┘
-                                                                
+
                     ┌─────────────────────────────────────────────────────┐
                     │                 Internal Network                     │
                     └──────────────────────┬──────────────────────────────┘

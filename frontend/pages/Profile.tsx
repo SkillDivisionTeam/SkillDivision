@@ -42,8 +42,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }
 
     const totalParticipants = events.reduce((acc, curr) => acc + curr.participants_count, 0);
-    
-    const topEventObj = events.reduce((prev, current) => 
+
+    const topEventObj = events.reduce((prev, current) =>
       (prev.participants_count > current.participants_count) ? prev : current
     );
 
@@ -66,15 +66,15 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* ЛЕВАЯ КОЛОНКА: Личная карточка */}
         <div className="lg:col-span-1">
           <Card className="h-full border-t-4 border-t-primary-500">
             <div className="flex flex-col items-center text-center">
               <div className="w-32 h-32 rounded-full bg-slate-800 p-1 mb-4 shadow-xl">
-                <img 
-                  src={user.avatar || `https://ui-avatars.com/api/?name=${user.username}&background=0f172a&color=fff`} 
-                  alt="Profile" 
+                <img
+                  src={user.avatar || `https://ui-avatars.com/api/?name=${user.username}&background=0f172a&color=fff`}
+                  alt="Profile"
                   className="w-full h-full rounded-full object-cover border-2 border-slate-700"
                 />
               </div>
@@ -103,7 +103,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
         {/* ПРАВАЯ КОЛОНКА: Сводная аналитика */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          
+
           {/* Хедер */}
           <div className="flex flex-col sm:flex-row gap-4">
              <Card className="flex-grow bg-gradient-to-r from-slate-800 to-slate-900 border-none">
@@ -125,7 +125,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
           {/* KPI Метрики (Динамические) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
+
             <div className="bg-slate-800 p-4 rounded-xl border border-slate-700/50 flex flex-col">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-slate-400 text-xs uppercase font-bold">Ивенты</span>
@@ -180,8 +180,8 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
 
             <div className="space-y-3">
               {events.map((event) => (
-                <div 
-                  key={event.id} 
+                <div
+                  key={event.id}
                   onClick={() => navigate(`/events/${event.id}`)} // Переход к деталям
                   className="group flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-transparent hover:border-primary-500/30 hover:bg-slate-800 transition-all cursor-pointer"
                 >
@@ -202,11 +202,11 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                       <span>{event.participants_count} участников</span>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       event.is_active
-                        ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                         : 'bg-slate-700 text-slate-400'
                     }`}>
                       {event.is_active ? 'Активен' : 'Завершен'}

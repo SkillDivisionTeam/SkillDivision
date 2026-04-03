@@ -1,8 +1,8 @@
 # Skill Division — Business Logic & Functional Requirements Analysis
 
-**Date:** 2026-04-03  
-**Analyzed by:** Senior Business Analyst & Systems Architect  
-**Scope:** Deep analysis of business logic, functional requirements, contradictions, and gaps  
+**Date:** 2026-04-03
+**Analyzed by:** Senior Business Analyst & Systems Architect
+**Scope:** Deep analysis of business logic, functional requirements, contradictions, and gaps
 **Sources:** [`bot/bot.py`](bot/bot.py), [`backend/api/views.py`](backend/api/views.py), [`backend/api/models.py`](backend/api/models.py), [`backend/api/serializers.py`](backend/api/serializers.py), [`frontend/pages/EventDetails.tsx`](frontend/pages/EventDetails.tsx), [`docs/ru/1_concept.md`](docs/ru/1_concept.md), [`docs/ru/2_structure.md`](docs/ru/2_structure.md)
 
 ---
@@ -100,37 +100,37 @@ class SubmitAnswerView(views.APIView):
         question_id = request.data.get('question_id')
         answer_index = request.data.get('answer_index')
         response_time_ms = request.data.get('response_time_ms')
-        
+
         # 1. Validate session exists and is active
         session = QuizSession.objects.select_related('event').get(id=session_id)
         if session.status != 'active':
             return Response({'error': 'Session not active'}, status=400)
-        
+
         # 2. Validate question belongs to session
         question = Question.objects.get(id=question_id)
         if question not in session.questions:
             return Response({'error': 'Question not in session'}, status=400)
-        
+
         # 3. Check for duplicate answer
         if UserAnswer.objects.filter(session=session, question=question).exists():
             return Response({'error': 'Already answered'}, status=409)
-        
+
         # 4. Server-side answer verification
         is_correct = answer_index == question.correct_index
-        
+
         # 5. Calculate score server-side
         difficulty_weights = {'easy': 1, 'medium': 2, 'hard': 3}
         base_score = difficulty_weights[question.difficulty] if is_correct else 0
-        
+
         # Speed bonus: max 5 points, decays at 0.5/sec
         response_time_sec = response_time_ms / 1000
         speed_bonus = max(0, 5 - (0.5 * response_time_sec)) if is_correct else 0
-        
+
         # Penalty for wrong/timeout
         penalty = -1 if not is_correct else 0
-        
+
         total = base_score + speed_bonus + penalty
-        
+
         # 6. Atomic score update
         UserAnswer.objects.create(
             session=session, question=question,
@@ -140,7 +140,7 @@ class SubmitAnswerView(views.APIView):
         )
         session.score += total
         session.save(update_fields=['score'])
-        
+
         return Response({
             'correct': is_correct,
             'points_earned': total,
@@ -206,7 +206,7 @@ sequenceDiagram
     API->>TimerService: Start 10s timer for session
     API-->>Bot: Return question + session_id + timer_start
     Bot-->>User: Show question
-    
+
     alt User answers within 10s
         User->>Bot: Select answer
         Bot->>API: POST /quiz/answer/ {session_id, answer, response_time}
@@ -249,30 +249,30 @@ class StartQuizView(views.APIView):
         event = Event.objects.get(id=event_id)
         questions = list(event.questions.all())
         selected = random.sample(questions, k=min(len(questions), 10))
-        
+
         session = QuizSession.objects.create(
             user=request.user, event=event,
             status='active', score=0,
             current_question_index=0
         )
         session.questions.set(selected)
-        
+
         # Start first question timer
         self._start_question_timer(session, selected[0])
-        
+
         return Response({
             'session_id': session.id,
             'question': serialize_question_for_quiz(selected[0]),
             'timer_seconds': 10,
             'total_questions': len(selected)
         })
-    
+
     def _start_question_timer(self, session, question):
         from .tasks import expire_question_timer
         expires_at = timezone.now() + timedelta(seconds=10)
         session.timer_expires_at = expires_at
         session.save(update_fields=['timer_expires_at'])
-        
+
         # Schedule Celery task
         expire_question_timer.apply_async(
             args=[session.id],
@@ -288,7 +288,7 @@ def expire_question_timer(self, session_id):
     session = QuizSession.objects.select_related().get(id=session_id)
     if session.status != 'active':
         return  # Session already ended
-    
+
     # Record timeout
     UserAnswer.objects.create(
         session=session,
@@ -298,7 +298,7 @@ def expire_question_timer(self, session_id):
     )
     session.score -= 2
     session.save(update_fields=['score'])
-    
+
     # Advance to next question or end quiz
     session.current_question_index += 1
     if session.current_question_index >= session.questions.count():
@@ -379,32 +379,32 @@ stateDiagram-v2
     [*] --> Created: Player creates room or enters queue
     Created --> Waiting: Room created, waiting for opponent
     Created --> Queued: Player enters matchmaking queue
-    
+
     Waiting --> Active: Opponent joins
     Queued --> Active: Matchmaker finds opponent
-    
+
     Waiting --> Expired: Timeout (5 min no join)
     Queued --> Cancelled: Player cancels search
     Queued --> Expired: Timeout (2 min no match)
-    
+
     Active --> QuestionActive: Next question sent
     QuestionActive --> Answered_P1: Player 1 answers
     QuestionActive --> Answered_P2: Player 2 answers
     QuestionActive --> TimedOut: 10s elapsed
-    
+
     Answered_P1 --> QuestionActive: Waiting for P2
     Answered_P2 --> QuestionActive: Waiting for P1
     Answered_P1 --> Answered_Both: Both answered
     Answered_P2 --> Answered_Both: Both answered
     TimedOut --> Answered_Both: Force advance
-    
+
     Answered_Both --> QuestionActive: More questions remain
     Answered_Both --> Completed: All questions answered
-    
+
     Completed --> [*]: Results saved
     Expired --> [*]: Room cleaned up
     Cancelled --> [*]: Player removed from queue
-    
+
     Active --> Disconnected_P1: Player 1 drops
     Active --> Disconnected_P2: Player 2 drops
     Disconnected_P1 --> Completed: Grace period expires, P2 wins
@@ -424,7 +424,7 @@ class DuelRoom(models.Model):
         ('expired', 'Timed out'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     code = models.CharField(max_length=6, unique=True)
     player1 = models.ForeignKey(User, related_name='duels_p1', on_delete=models.CASCADE)
     player2 = models.ForeignKey(User, related_name='duels_p2', on_delete=models.CASCADE, null=True, blank=True)
@@ -437,7 +437,7 @@ class DuelRoom(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(null=True)
     completed_at = models.DateTimeField(null=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['code']),
@@ -450,7 +450,7 @@ class MatchmakingQueue(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     joined_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
-    
+
     class Meta:
         unique_together = ['user', 'event']  # Prevent duplicate entries
         indexes = [
@@ -548,14 +548,14 @@ class IsParticipant(permissions.BasePermission):
 # views.py
 class EventViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsAdmin()]
         if self.action == 'stats':
             return [IsAdminOrHR()]
         return [permissions.IsAuthenticated()]
-    
+
     @action(detail=True, methods=['get'])
     def stats(self, request, pk=None):
         # Only admin and HR can view stats
@@ -570,7 +570,7 @@ class CustomAuthToken(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         token, created = Token.objects.get_or_create(user=user)
-        
+
         # DO NOT auto-create admin profile
         # Profile should be pre-provisioned by an admin
         try:
@@ -580,7 +580,7 @@ class CustomAuthToken(ObtainAuthToken):
                 {"error": "No profile assigned. Contact administrator."},
                 status=403
             )
-        
+
         return Response({
             "token": token.key,
             "user_id": user.pk,
@@ -653,16 +653,16 @@ class EventViewSet(viewsets.ModelViewSet):
     def export_csv(self, request, pk=None):
         event = self.get_object()
         results = QuizResult.objects.filter(event=event).select_related('user', 'user__profile')
-        
+
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="event_{event.id}_report.csv"'
-        
+
         writer = csv.writer(response)
         writer.writerow([
             'Username', 'Telegram ID', 'Role', 'Score', 'Max Score',
             'Skill Level', 'Completed At', 'Consent Given'
         ])
-        
+
         for result in results:
             profile = getattr(result.user, 'profile', None)
             skill_level = self._calculate_skill_level(result.score)
@@ -676,9 +676,9 @@ class EventViewSet(viewsets.ModelViewSet):
                 result.completed_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'Yes' if getattr(profile, 'data_consent', False) else 'No'
             ])
-        
+
         return response
-    
+
     def _calculate_skill_level(self, score):
         if score <= 10:
             return 'Junior'
@@ -780,47 +780,47 @@ class Event(models.Model):
 ```mermaid
 stateDiagram-v2
     [*] --> Draft: Admin creates event
-    
+
     Draft --> Scheduled: Admin sets date and publishes
     Draft --> [*]: Admin deletes draft
-    
+
     Scheduled --> Active: Event date reached OR admin manually starts
     Scheduled --> Cancelled: Admin cancels
     Scheduled --> Draft: Admin reverts to draft
-    
+
     Active --> Completed: Admin ends event OR all quizzes finished
     Active --> [*]: Emergency delete (admin only, with confirmation)
-    
+
     Completed --> Archived: Auto-archive after 30 days OR admin archives
     Completed --> Active: Admin re-opens event (rare)
-    
+
     Archived --> [*]: Permanent (no transitions out)
     Cancelled --> [*]: Permanent (no transitions out)
-    
+
     note right of Draft
         - Questions can be added/edited
         - AI generation available
         - Not visible to participants
     end note
-    
+
     note right of Scheduled
         - Visible to participants
         - Registration open
         - Questions locked
     end note
-    
+
     note right of Active
         - Quizzes can be started
         - Real-time leaderboard
         - Questions locked
     end note
-    
+
     note right of Completed
         - No new quizzes
         - Leaderboard final
         - Export available
     end note
-    
+
     note right of Archived
         - Read-only
         - Export still available
@@ -840,7 +840,7 @@ class Event(models.Model):
         ('archived', 'Archived'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     title = models.CharField(max_length=200)
     date = models.DateField()
     event_code = models.CharField(max_length=10, unique=True)
@@ -852,12 +852,12 @@ class Event(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     archived_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         indexes = [
             models.Index(fields=['status', 'date']),
         ]
-    
+
     def can_transition(self, target_status):
         transitions = {
             'draft': ['scheduled', None],  # None = delete
@@ -868,11 +868,11 @@ class Event(models.Model):
             'cancelled': [],
         }
         return target_status in transitions.get(self.status, [])
-    
+
     def transition_to(self, target_status, user=None):
         if not self.can_transition(target_status):
             raise ValueError(f"Cannot transition from {self.status} to {target_status}")
-        
+
         now = timezone.now()
         if target_status == 'scheduled':
             self.published_at = now
@@ -882,10 +882,10 @@ class Event(models.Model):
             self.completed_at = now
         elif target_status == 'archived':
             self.archived_at = now
-        
+
         self.status = target_status
         self.save()
-        
+
         # Log transition
         EventTransitionLog.objects.create(
             event=self, from_status=self.status,
@@ -909,15 +909,15 @@ class EventViewSet(viewsets.ModelViewSet):
     def transition(self, request, pk=None):
         event = self.get_object()
         target_status = request.data.get('status')
-        
+
         if target_status not in dict(Event.STATUS_CHOICES):
             return Response({'error': 'Invalid status'}, status=400)
-        
+
         try:
             event.transition_to(target_status, user=request.user)
         except ValueError as e:
             return Response({'error': str(e)}, status=400)
-        
+
         return Response({'status': event.status, 'message': f'Event {target_status}'})
 ```
 
@@ -975,7 +975,7 @@ sequenceDiagram
     API->>TimerSvc: Start 10s timer
     API-->>Bot: {session_id, question, timer: 10s}
     Bot-->>User: Show question + countdown
-    
+
     alt User answers in time
         User->>Bot: Select answer
         Bot->>API: POST /quiz/answer/ {session_id, question_id, answer_index, response_time_ms}
@@ -992,7 +992,7 @@ sequenceDiagram
         API->>Bot: {timeout: true, penalty: -2}
         Bot-->>User: "Time's up! -2 points"
     end
-    
+
     Note over API,DB: All questions answered
     API->>DB: Mark QuizSession completed
     API-->>Bot: {quiz_complete, final_score: 23}
@@ -1016,7 +1016,7 @@ class QuizSession(models.Model):
     questions = models.ManyToManyField(Question, through='SessionQuestion')
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True)
-    
+
     class Meta:
         constraints = [
             # One active session per user per event
@@ -1032,7 +1032,7 @@ class SessionQuestion(models.Model):
     session = models.ForeignKey(QuizSession, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     order = models.IntegerField()
-    
+
     class Meta:
         unique_together = ['session', 'question']
         ordering = ['order']
@@ -1047,7 +1047,7 @@ class UserAnswer(models.Model):
     response_time_ms = models.IntegerField(null=True)
     points_earned = models.IntegerField(default=0)
     answered_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         unique_together = ['session', 'question']  # Idempotency constraint
         ordering = ['answered_at']
@@ -1058,13 +1058,13 @@ class UserAnswer(models.Model):
 ```python
 class SubmitAnswerView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
-    
+
     def post(self, request):
         session_id = request.data.get('session_id')
         question_id = request.data.get('question_id')
         answer_index = request.data.get('answer_index')
         response_time_ms = request.data.get('response_time_ms')
-        
+
         # 1. Validate session
         try:
             session = QuizSession.objects.select_related('event').get(
@@ -1072,7 +1072,7 @@ class SubmitAnswerView(views.APIView):
             )
         except QuizSession.DoesNotExist:
             return Response({'error': 'Invalid or expired session'}, status=404)
-        
+
         # 2. Validate question belongs to session
         try:
             sq = SessionQuestion.objects.get(
@@ -1081,7 +1081,7 @@ class SubmitAnswerView(views.APIView):
             )
         except SessionQuestion.DoesNotExist:
             return Response({'error': 'Invalid question'}, status=400)
-        
+
         # 3. Check idempotency (already answered)
         if UserAnswer.objects.filter(session=session, question_id=question_id).exists():
             existing = UserAnswer.objects.get(session=session, question_id=question_id)
@@ -1091,19 +1091,19 @@ class SubmitAnswerView(views.APIView):
                 'points_earned': existing.points_earned,
                 'total_score': session.score
             }, status=200)
-        
+
         # 4. Validate timer (server-side check)
         if response_time_ms and response_time_ms > 10000:
             # Answer arrived after timeout — treat as timeout
             return self._handle_timeout(session, sq.question)
-        
+
         # 5. Verify answer (server-side, never exposed to client)
         question = sq.question
         is_correct = answer_index == question.correct_index
-        
+
         # 6. Calculate score
         points = self._calculate_points(question, is_correct, response_time_ms)
-        
+
         # 7. Atomic update
         with transaction.atomic():
             UserAnswer.objects.create(
@@ -1114,19 +1114,19 @@ class SubmitAnswerView(views.APIView):
             session.score += points
             session.current_question_index += 1
             session.save(update_fields=['score', 'current_question_index'])
-        
+
         # 8. Check if quiz is complete
         if session.current_question_index >= session.questions.count():
             session.status = 'completed'
             session.completed_at = timezone.now()
             session.save(update_fields=['status', 'completed_at'])
-            
+
             # Create QuizResult record
             QuizResult.objects.create(
                 user=session.user, event=session.event,
                 score=session.score, max_score=self._max_possible_score(session)
             )
-            
+
             return Response({
                 'correct': is_correct,
                 'points_earned': points,
@@ -1134,16 +1134,16 @@ class SubmitAnswerView(views.APIView):
                 'quiz_complete': True,
                 'final_score': session.score
             })
-        
+
         # 9. Return next question
         next_sq = SessionQuestion.objects.filter(
             session=session, order=session.current_question_index
         ).first()
-        
+
         if next_sq:
             # Start timer for next question
             self._start_question_timer(session, next_sq.question)
-            
+
             return Response({
                 'correct': is_correct,
                 'points_earned': points,
@@ -1152,23 +1152,23 @@ class SubmitAnswerView(views.APIView):
                 'next_question': serialize_question_for_quiz(next_sq.question),
                 'timer_seconds': 10
             })
-        
+
         return Response({'error': 'No next question'}, status=500)
-    
+
     def _calculate_points(self, question, is_correct, response_time_ms):
         if not is_correct:
             return -1  # Penalty for wrong answer
-        
+
         difficulty_weights = {'easy': 1, 'medium': 2, 'hard': 3}
         base = difficulty_weights.get(question.difficulty, 2)
-        
+
         # Speed bonus: max 5, decays 0.5/sec
         if response_time_ms:
             seconds = response_time_ms / 1000
             speed_bonus = max(0, 5 - (0.5 * seconds))
         else:
             speed_bonus = 0
-        
+
         return base + speed_bonus
 ```
 

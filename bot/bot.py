@@ -1,15 +1,16 @@
-import telebot
-from telebot import types
-import threading
-import requests
-import random
-import string
-import os
-import logging
 import json
+import logging
+import os
+import random
 import re
-from gigachat import GigaChat
+import string
+import threading
+
+import requests
+import telebot
 from dotenv import load_dotenv
+from gigachat import GigaChat
+from telebot import types
 
 load_dotenv()
 
@@ -147,15 +148,14 @@ def generate_quiz_gigachat():
 
 user_data = {}
 rooms = {}
-quick_queue = []
+quick_queue: list[int] = []
 
 
 # ==================== МЕНЮ И ОБРАБОТЧИКИ ====================
 @bot.message_handler(commands=["start"])
 def start(m):
     api_register_user(m.from_user)
-    show_main_menu(
-        m.chat.id, "Добро пожаловать в Skill Division! 🚀\nГлавное меню:")
+    show_main_menu(m.chat.id, "Добро пожаловать в Skill Division! 🚀\nГлавное меню:")
 
 
 def show_main_menu(chat_id, text):
@@ -193,8 +193,7 @@ def main_handler(m):
     # --- ДУЭЛЬ ---
     elif text == "⚔ Дуэль":
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add("⚡ Быстрый поиск", "🔑 По коду",
-                   "Создать комнату", "🔙 Назад")
+        markup.add("⚡ Быстрый поиск", "🔑 По коду", "Создать комнату", "🔙 Назад")
         bot.send_message(chat_id, "Режим дуэли:", reply_markup=markup)
 
     # --- ИНФОРМАЦИЯ ---
@@ -300,8 +299,7 @@ def get_questions_logic(chat_id, use_ai=False):
         if ai_questions:
             return ai_questions, None  # None, так как ивент не привязан
         else:
-            bot.send_message(
-                chat_id, "⚠️ AI недоступен. Загружаю резервные вопросы.")
+            bot.send_message(chat_id, "⚠️ AI недоступен. Загружаю резервные вопросы.")
             # Fallback к обычным вопросам, если AI упал
 
     # 2. Обычный режим (или fallback)
@@ -373,8 +371,7 @@ def end_single_game(chat_id):
     # но пока отправим как есть, главное сохранить score в профиль юзера)
     api_send_score(chat_id, data["score"], data["event_id"])
 
-    bot.send_message(
-        chat_id, f"🏁 Результат: {data['score']} очков! Данные сохранены.")
+    bot.send_message(chat_id, f"🏁 Результат: {data['score']} очков! Данные сохранены.")
     del user_data[chat_id]
     show_main_menu(chat_id, "Игра окончена.")
 
@@ -475,8 +472,7 @@ def answer_handler(call):
         room["answers"] += 1
         if room["answers"] >= 2:
             room["current"] += 1
-            threading.Timer(0.5, ask_duel_question, args=[
-                            udata["room_id"]]).start()
+            threading.Timer(0.5, ask_duel_question, args=[udata["room_id"]]).start()
 
 
 if __name__ == "__main__":

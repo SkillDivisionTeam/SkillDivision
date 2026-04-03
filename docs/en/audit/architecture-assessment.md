@@ -1,7 +1,7 @@
 # Skill Division — Architecture & Stack Assessment for MVP Suitability
 
-**Date:** 2026-04-03  
-**Assessed by:** Senior System Architect  
+**Date:** 2026-04-03
+**Assessed by:** Senior System Architect
 **Scope:** MVP evaluation for IT quiz platform (Telegram bot + Web admin dashboard)
 
 ---
@@ -312,24 +312,24 @@ class SubmitAnswerView(views.APIView):
     def post(self, request, event_id):
         question_id = request.data.get('question_id')
         answer_index = request.data.get('answer_index')
-        
+
         question = Question.objects.get(id=question_id, event_id=event_id)
         is_correct = answer_index == question.correct_index
-        
+
         # Atomically update or create session
         session, _ = QuizSession.objects.get_or_create(
             user=request.user, event_id=event_id,
             defaults={'score': 0, 'current_question': 0}
         )
-        
+
         if is_correct:
             session.score += 5
-        
+
         UserAnswer.objects.create(
-            session=session, question=question, 
+            session=session, question=question,
             answer=answer_index, is_correct=is_correct
         )
-        
+
         return Response({'correct': is_correct, 'score': session.score})
 ```
 
@@ -359,7 +359,7 @@ REST_FRAMEWORK = {
 # views.py
 class EventViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    
+
     @action(detail=True, methods=['get'])
     def questions(self, request, pk=None):
         # Only return questions for authenticated users
@@ -418,7 +418,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        
+
         # Rate limiting
         limit_req zone=api burst=20 nodelay;
     }
@@ -493,11 +493,11 @@ class EventViewSet(viewsets.ModelViewSet):
     def stats(self, request, pk=None):
         cache_key = f'event_stats_{pk}'
         data = cache.get(cache_key)
-        
+
         if not data:
             # ... compute stats ...
             cache.set(cache_key, data, timeout=60)
-        
+
         return Response(data)
 ```
 

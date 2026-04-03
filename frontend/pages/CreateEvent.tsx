@@ -69,7 +69,7 @@ const CreateEvent: React.FC = () => {
                 placeholder="Например: Python Summer Camp 2024"
                 required
               />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Дата проведения"
@@ -119,10 +119,10 @@ const CreateEvent: React.FC = () => {
             <p className="text-sm text-slate-400 mb-6">
               Нужны идеи для квиза? Введите название мероприятия, и наш AI предложит актуальные технические темы.
             </p>
-            
-            <Button 
-              type="button" 
-              variant="secondary" 
+
+            <Button
+              type="button"
+              variant="secondary"
               className="w-full mb-6 border-indigo-500/30 text-indigo-300 hover:bg-indigo-950/50 hover:text-white"
               onClick={handleAiSuggest}
               isLoading={aiLoading}
@@ -146,7 +146,7 @@ const CreateEvent: React.FC = () => {
                 </p>
               </div>
             )}
-            
+
             {suggestedTopics.length === 0 && !aiLoading && (
                 <div className="border border-dashed border-slate-700 rounded-lg p-8 text-center">
                     <Type className="w-8 h-8 text-slate-600 mx-auto mb-2" />

@@ -15,7 +15,7 @@ const Events: React.FC = () => {
       try {
         const data = await getEvents();
         setEvents(data);
-      } catch { 
+      } catch {
         console.error("Failed to load events");
       } finally {
         setLoading(false);
@@ -45,8 +45,8 @@ const Events: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {events.map((event) => (
-            <Card 
-              key={event.id} 
+            <Card
+              key={event.id}
               className="hover:border-primary-500/30 transition-colors cursor-pointer group"
               onClick={() => navigate(`/events/${event.id}`)}
             >
@@ -58,7 +58,7 @@ const Events: React.FC = () => {
                    <Hash className="w-3 h-3 mr-1" /> {event.event_code}
                 </div>
               </div>
-              
+
               <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-primary-400 transition-colors">
                 {event.title}
               </h3>

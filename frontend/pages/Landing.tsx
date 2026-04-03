@@ -25,7 +25,7 @@ const Landing: React.FC = () => {
             Ваш путь к мастерству в <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-secondary-400">IT Сфере</span>
           </h1>
           <p className="mt-4 text-xl text-slate-400 max-w-3xl mx-auto mb-10">
-            Платформа для проведения интерактивных IT-квизов и аналитики навыков. 
+            Платформа для проведения интерактивных IT-квизов и аналитики навыков.
             От Telegram-бота для участников до мощной аналитической панели для Организаторов и HR.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
@@ -77,7 +77,7 @@ const Landing: React.FC = () => {
                 <h2 className="text-3xl font-bold text-white">Преимущества платформы</h2>
                 <p className="mt-4 text-slate-400">Ценность для всех участников экосистемы мероприятия.</p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Community */}
                 <div className="space-y-4">
