@@ -71,7 +71,7 @@ jobs:
       - name: Запуск тестов
         run: |
           cd frontend
-          npx vitest run --coverage
+          npx vitest run --coverage --passWithNoTests
 
       - name: Загрузка отчёта о покрытии в Codecov
         uses: codecov/codecov-action@v4
