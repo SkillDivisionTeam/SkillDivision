@@ -5,9 +5,8 @@ updates:
     directory: "/backend"
     schedule:
       interval: "weekly"
-    target-branch: "develop" # PR'ы создаются в ветку develop
+    target-branch: "develop"
     open-pull-requests-limit: 10
-    # Игнорируем мажорные обновления
     ignore:
       - dependency-name: "django"
         update-types: ["version-update:semver-major"]
@@ -19,7 +18,14 @@ updates:
       interval: "weekly"
     target-branch: "develop"
     ignore:
+      # Запрещаем мажорные обновления для ядра фронтенда
       - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
 
   # Bot dependencies (pip)
@@ -28,3 +34,7 @@ updates:
     schedule:
       interval: "weekly"
     target-branch: "develop"
+    ignore:
+      # Запрещаем ломать библиотеку бота перед сдачей
+      - dependency-name: "pytelegrambotapi"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
