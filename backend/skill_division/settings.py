@@ -71,7 +71,9 @@ DATABASES = {
         "NAME": os.environ.get("POSTGRES_DB", "skilldivision"),
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
-        "HOST": "db",  # Имя сервиса в docker-compose
+        "HOST": os.environ.get(
+            "POSTGRES_HOST", "db"
+        ),  # Имя сервиса в docker-compose, или localhost для CI
         "PORT": "5432",
     }
 }
