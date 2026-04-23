@@ -5,7 +5,7 @@
 # ==========================================
 
 # Django Framework (LTS до апреля 2026)
-Django>=5.0
+Django>=6.0.4
 djangorestframework>=3.14
 psycopg2-binary>=2.9
 python-dotenv>=1.0
