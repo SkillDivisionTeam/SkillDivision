@@ -5,15 +5,43 @@
 ![Backend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/backend.yml/badge.svg)
 ![Frontend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/frontend.yml/badge.svg)
 ![Bot CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/bot.yml/badge.svg)
+![Infrastructure CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/infra.yml/badge.svg)
 
 ## Стек технологий
 
 - **Backend:** Python 3.11, Django 5, Django REST Framework (DRF)
 - **Frontend:** React, Vite, TypeScript, TailwindCSS
-- **Database:** PostgreSQL
+- **Database:** PostgreSQL 14
 - **Bot:** python-telegram-bot (Telebot), архитектура "Тонкий клиент"
 - **AI:** GigaChat API (генерация вопросов)
-- **Infrastructure:** Docker & Docker Compose, Nginx
+- **Infrastructure:** Docker & Docker Compose, Nginx, Gunicorn, GitHub Actions
+
+## Архитектура развёртывания (production)
+
+```mermaid
+flowchart TB
+    Internet([Интернет / пользователи])
+
+    subgraph frontend_net["Сеть frontend_net"]
+        Nginx["Nginx :80<br/>обратный прокси"]
+        Frontend["Frontend<br/>React SPA, nginx :80"]
+        Backend["Backend<br/>Django + Gunicorn :8000"]
+        Bot["Telegram Bot"]
+    end
+
+    subgraph backend_net["Сеть backend_net (internal)"]
+        DB[(PostgreSQL :5432)]
+    end
+
+    Internet --> Nginx
+    Nginx -->|"/" SPA| Frontend
+    Nginx -->|"/api/", "/admin/"| Backend
+    Backend --> DB
+    Bot -->|REST API| Backend
+    Bot -.->|Telegram API| Internet
+```
+
+Подробная документация по развёртыванию: [docs/ru/5_deployment.md](docs/ru/5_deployment.md)
 
 ## Функциональность
 
@@ -233,6 +261,7 @@ git commit --no-verify -m "Ваш коммит"
 - [Структура Проекта](docs/ru/2_structure.md)
 - [Функциональная Спецификация](docs/ru/3_func_specification.md)
 - [Спецификации и сценарии тестов](docs/ru/4_test_specification.md)
+- [Руководство по развёртыванию](docs/ru/5_deployment.md)
 
 ## Google Drive
 
