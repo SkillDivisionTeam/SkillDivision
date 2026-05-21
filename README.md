@@ -5,15 +5,43 @@
 ![Backend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/backend.yml/badge.svg)
 ![Frontend CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/frontend.yml/badge.svg)
 ![Bot CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/bot.yml/badge.svg)
+![Infrastructure CI](https://github.com/SkillDivisionTeam/SkillDivision/actions/workflows/infra.yml/badge.svg)
 
 ## Стек технологий
 
 - **Backend:** Python 3.11, Django 5, Django REST Framework (DRF)
 - **Frontend:** React, Vite, TypeScript, TailwindCSS
-- **Database:** PostgreSQL
+- **Database:** PostgreSQL 14
 - **Bot:** python-telegram-bot (Telebot), архитектура "Тонкий клиент"
 - **AI:** GigaChat API (генерация вопросов)
-- **Infrastructure:** Docker & Docker Compose, Nginx
+- **Infrastructure:** Docker & Docker Compose, Nginx, Gunicorn, GitHub Actions
+
+## Архитектура развёртывания (production)
+
+```mermaid
+flowchart TB
+    Internet([Интернет / пользователи])
+
+    subgraph frontend_net["Сеть frontend_net"]
+        Nginx["Nginx :80<br/>обратный прокси"]
+        Frontend["Frontend<br/>React SPA, nginx :80"]
+        Backend["Backend<br/>Django + Gunicorn :8000"]
+        Bot["Telegram Bot"]
+    end
+
+    subgraph backend_net["Сеть backend_net (internal)"]
+        DB[(PostgreSQL :5432)]
+    end
+
+    Internet --> Nginx
+    Nginx -->|"/" SPA| Frontend
+    Nginx -->|"/api/", "/admin/"| Backend
+    Backend --> DB
+    Bot -->|REST API| Backend
+    Bot -.->|Telegram API| Internet
+```
+
+Подробная документация по развёртыванию: [docs/ru/5_deployment.md](docs/ru/5_deployment.md)
 
 ## Функциональность
 
@@ -51,44 +79,76 @@
 
 ### 1. Настройка окружения
 
-Создайте файл `.env` в корне проекта (рядом с `docker-compose.yml`).
-Пример содержимого:
+Скопируйте шаблон и заполните секреты:
+
+```bash
+cp .env.example .env
+```
+
+Все сервисы (backend, bot, frontend) читают переменные из одного файла `.env` в корне проекта:
 
 ```env
-# Database
+# Database (PostgreSQL)
 POSTGRES_DB=skilldivision
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
 
-# Django
-DJANGO_SECRET_KEY=super-secret-key
-DEBUG=True
+# Telegram-бот и AI
+TG_TOKEN=your-telegram-bot-token
+GIGACHAT_TOKEN=your-gigachat-credentials
 
-# API URLs (Internal Docker Network)
-BACKEND_API_URL=http://backend:8000/api
-
-# External Tokens
-TG_TOKEN=ваш_телеграм_токен
-GIGACHAT_TOKEN=ваш_токен_gigachat
-```
-
-Также создайте файл `.env` в папке `frontend`:
-
-```env
+# Frontend (Vite)
+GEMINI_API_KEY=your-gemini-api-key
 VITE_API_URL=http://localhost:8000/api
 ```
 
-### 2. Запуск контейнеров
+При локальном запуске `npm run dev` в папке `frontend` Vite подхватывает корневой `.env` автоматически.
 
-Сборка и запуск всех сервисов:
+### 2. Запуск контейнеров (разработка)
+
+Сборка и запуск dev-окружения (hot reload, порты 3000/8000, pgAdmin):
 
 ```bash
 docker compose up -d --build
 ```
 
-### 3. Применение миграций и настройка БД
+### 3. Запуск production-окружения
+
+Prod: Nginx на порту 80, Gunicorn, собранный фронтенд, БД без внешнего порта.
+
+Перед первым запуском в `.env` для prod задайте:
+
+```env
+DJANGO_DEBUG=False
+DJANGO_SECRET_KEY=<случайная-длинная-строка>
+POSTGRES_PASSWORD=<надёжный-пароль>
+VITE_API_URL=/api
+CORS_ALLOWED_ORIGINS=http://localhost,http://127.0.0.1
+```
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+После запуска:
+
+- **Веб-приложение и API:** [http://localhost](http://localhost) (API: `/api/`)
+- **Админка Django:** [http://localhost/admin](http://localhost/admin)
+
+Миграции и суперпользователь — те же команды, с указанием prod-файла:
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend python manage.py migrate
+docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser
+```
+
+Остановка prod-стека:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+### 4. Применение миграций и настройка БД (dev)
 
 После первого запуска необходимо создать структуры таблиц:
 
@@ -103,14 +163,21 @@ docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py createsuperuser
 ```
 
-### Доступы к сервисам
+### Доступы к сервисам (dev)
 
-После успешного запуска сервисы доступны по адресам:
+После успешного запуска `docker compose up`:
 
 - **Frontend (Web):** [http://localhost:3000](http://localhost:3000)
 - **Backend API:** [http://localhost:8000/api/events/](http://localhost:8000/api/events/)
 - **Админка Django:** [http://localhost:8000/admin](http://localhost:8000/admin)
-- **pgAdmin:** [http://localhost:5050](http://localhost:5050) (Login: `admin@admin.com`, Pass: `admin`)
+- **pgAdmin:** [http://localhost:5050](http://localhost:5050) (только localhost; логин из `.env`). В pgAdmin хост БД: `db`, порт `5432`.
+
+PostgreSQL с хоста (DBeaver) по умолчанию недоступен — только внутри Docker-сети. Если нужен доступ с машины, в `docker-compose.yml` у сервиса `db` добавьте (на Windows лучше не 5432):
+
+```yaml
+ports:
+  - "127.0.0.1:5433:5432"
+```
 
 ### Полезные команды
 
@@ -194,6 +261,7 @@ git commit --no-verify -m "Ваш коммит"
 - [Структура Проекта](docs/ru/2_structure.md)
 - [Функциональная Спецификация](docs/ru/3_func_specification.md)
 - [Спецификации и сценарии тестов](docs/ru/4_test_specification.md)
+- [Руководство по развёртыванию](docs/ru/5_deployment.md)
 
 ## Google Drive
 

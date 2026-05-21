@@ -99,7 +99,7 @@ jobs:
       - name: Запуск тестов с покрытием
         run: |
           cd backend
-          pytest --cov=api --cov-report=xml --cov-report=term-missing || (echo "No tests found or tests failed" && exit 0)
+          pytest --cov=api --cov-report=xml --cov-report=term-missing
 
       - name: Загрузка отчёта о покрытии в Codecov
         uses: codecov/codecov-action@v4

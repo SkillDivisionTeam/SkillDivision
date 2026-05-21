@@ -1,7 +1,5 @@
-version: '3.9'
-
+# Development: hot reload, прямые порты сервисов, pgAdmin на localhost
 services:
-  # Backend (Django + DRF)
   backend:
     build: ./backend
     container_name: skill_backend
@@ -12,64 +10,79 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      POSTGRES_HOST: db
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/events/')\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     restart: unless-stopped
 
-  # Frontend (React + Vite)
   frontend:
     build: ./frontend
     container_name: skill_frontend
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app             # Hot Reload
-      - /app/node_modules           # Изоляция зависимостей контейнера
+    env_file:
+      - .env
     environment:
-      - VITE_API_URL=http://localhost:8000/api
+      VITE_ENV_DIR: /opt/skilldivision
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - ./.env:/opt/skilldivision/.env:ro
     depends_on:
       - backend
     restart: unless-stopped
 
-  # Telegram Bot
   bot:
     build: ./bot
     container_name: skill_bot
     env_file:
       - .env
+    environment:
+      BACKEND_API_URL: ${BACKEND_API_URL:-http://backend:8000/api}
     depends_on:
       - backend
     restart: unless-stopped
 
-  # База данных PostgreSQL
   db:
     image: postgres:14.12-alpine
     container_name: skill_db
     restart: always
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: skilldivision
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-skilldivision}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # Порт на хост не пробрасываем: backend и pgAdmin подключаются к db по Docker-сети.
+    # На Windows 5432 часто занят или в excluded range — см. README при необходимости DBeaver.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-skilldivision}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # pgAdmin (веб-интерфейс для PostgreSQL)
   pgadmin:
     image: dpage/pgadmin4:8.2
     container_name: skill_pgadmin
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     depends_on:
       - db
     volumes:

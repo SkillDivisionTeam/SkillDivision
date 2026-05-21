@@ -75,7 +75,14 @@ jobs:
       - name: Запуск тестов с покрытием
         run: |
           cd bot
-          pytest --cov=. --cov-report=xml --cov-report=term-missing || (echo "No tests found or tests failed" && exit 0)
+          # --co: только сбор тестов без запуска; если 0 тестов — тихий exit 0
+          # Если тесты есть и падают — pytest вернёт ненулевой код и CI упадёт
+          TEST_COUNT=$(pytest --co -q 2>/dev/null | tail -1 | grep -oP '^\d+' || echo 0)
+          if [ "$TEST_COUNT" = "0" ]; then
+            echo "No bot tests found — skipping coverage"
+          else
+            pytest --cov=. --cov-report=xml --cov-report=term-missing
+          fi
 
       - name: Загрузка отчёта о покрытии в Codecov
         uses: codecov/codecov-action@v4
