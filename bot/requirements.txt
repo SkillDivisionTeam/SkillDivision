@@ -1,6 +1,6 @@
 #pip freeze > requirements.txt
 pyTelegramBotAPI==4.22.1
 gigachat==0.1.21
-requests==2.33.1
+requests==2.34.2
 types-requests==2.33.0.20260402
 python-dotenv==1.2.2
