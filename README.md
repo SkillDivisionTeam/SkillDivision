@@ -51,34 +51,30 @@
 
 ### 1. Настройка окружения
 
-Создайте файл `.env` в корне проекта (рядом с `docker-compose.yml`).
-Пример содержимого:
+Скопируйте шаблон и заполните секреты:
+
+```bash
+cp .env.example .env
+```
+
+Все сервисы (backend, bot, frontend) читают переменные из одного файла `.env` в корне проекта:
 
 ```env
-# Database
+# Database (PostgreSQL)
 POSTGRES_DB=skilldivision
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
 
-# Django
-DJANGO_SECRET_KEY=super-secret-key
-DEBUG=True
+# Telegram-бот и AI
+TG_TOKEN=your-telegram-bot-token
+GIGACHAT_TOKEN=your-gigachat-credentials
 
-# API URLs (Internal Docker Network)
-BACKEND_API_URL=http://backend:8000/api
-
-# External Tokens
-TG_TOKEN=ваш_телеграм_токен
-GIGACHAT_TOKEN=ваш_токен_gigachat
-```
-
-Также создайте файл `.env` в папке `frontend`:
-
-```env
+# Frontend (Vite)
+GEMINI_API_KEY=your-gemini-api-key
 VITE_API_URL=http://localhost:8000/api
 ```
+
+При локальном запуске `npm run dev` в папке `frontend` Vite подхватывает корневой `.env` автоматически.
 
 ### 2. Запуск контейнеров
 

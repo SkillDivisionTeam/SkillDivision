@@ -22,11 +22,14 @@ services:
     container_name: skill_frontend
     ports:
       - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      VITE_ENV_DIR: /opt/skilldivision
     volumes:
       - ./frontend:/app             # Hot Reload
       - /app/node_modules           # Изоляция зависимостей контейнера
-    environment:
-      - VITE_API_URL=http://localhost:8000/api
+      - ./.env:/opt/skilldivision/.env:ro
     depends_on:
       - backend
     restart: unless-stopped
