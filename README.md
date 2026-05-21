@@ -76,15 +76,51 @@ VITE_API_URL=http://localhost:8000/api
 
 При локальном запуске `npm run dev` в папке `frontend` Vite подхватывает корневой `.env` автоматически.
 
-### 2. Запуск контейнеров
+### 2. Запуск контейнеров (разработка)
 
-Сборка и запуск всех сервисов:
+Сборка и запуск dev-окружения (hot reload, порты 3000/8000, pgAdmin):
 
 ```bash
 docker compose up -d --build
 ```
 
-### 3. Применение миграций и настройка БД
+### 3. Запуск production-окружения
+
+Prod: Nginx на порту 80, Gunicorn, собранный фронтенд, БД без внешнего порта.
+
+Перед первым запуском в `.env` для prod задайте:
+
+```env
+DJANGO_DEBUG=False
+DJANGO_SECRET_KEY=<случайная-длинная-строка>
+POSTGRES_PASSWORD=<надёжный-пароль>
+VITE_API_URL=/api
+CORS_ALLOWED_ORIGINS=http://localhost,http://127.0.0.1
+```
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+После запуска:
+
+- **Веб-приложение и API:** [http://localhost](http://localhost) (API: `/api/`)
+- **Админка Django:** [http://localhost/admin](http://localhost/admin)
+
+Миграции и суперпользователь — те же команды, с указанием prod-файла:
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend python manage.py migrate
+docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser
+```
+
+Остановка prod-стека:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+### 4. Применение миграций и настройка БД (dev)
 
 После первого запуска необходимо создать структуры таблиц:
 
@@ -99,14 +135,21 @@ docker compose exec backend python manage.py migrate
 docker compose exec backend python manage.py createsuperuser
 ```
 
-### Доступы к сервисам
+### Доступы к сервисам (dev)
 
-После успешного запуска сервисы доступны по адресам:
+После успешного запуска `docker compose up`:
 
 - **Frontend (Web):** [http://localhost:3000](http://localhost:3000)
 - **Backend API:** [http://localhost:8000/api/events/](http://localhost:8000/api/events/)
 - **Админка Django:** [http://localhost:8000/admin](http://localhost:8000/admin)
-- **pgAdmin:** [http://localhost:5050](http://localhost:5050) (Login: `admin@admin.com`, Pass: `admin`)
+- **pgAdmin:** [http://localhost:5050](http://localhost:5050) (только localhost; логин из `.env`). В pgAdmin хост БД: `db`, порт `5432`.
+
+PostgreSQL с хоста (DBeaver) по умолчанию недоступен — только внутри Docker-сети. Если нужен доступ с машины, в `docker-compose.yml` у сервиса `db` добавьте (на Windows лучше не 5432):
+
+```yaml
+ports:
+  - "127.0.0.1:5433:5432"
+```
 
 ### Полезные команды
 
