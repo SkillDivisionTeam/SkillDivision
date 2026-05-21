@@ -86,7 +86,7 @@ jobs:
       - name: Проверка импортов бота
         run: |
           docker run --rm \
-            -e TG_TOKEN=dummy \
+            -e TG_TOKEN=000000000:AAHci_dummy_token_for_github_actions \
             -e GIGACHAT_TOKEN=dummy \
             -e BACKEND_API_URL=http://localhost:8000/api \
             skilldivision-bot:ci \
