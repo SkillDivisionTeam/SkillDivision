@@ -5,6 +5,7 @@ import random
 import re
 import string
 import threading
+from typing import Any
 
 import requests
 import telebot
@@ -146,8 +147,8 @@ def generate_quiz_gigachat():
         return None
 
 
-user_data = {}
-rooms = {}
+user_data: dict[int, dict[str, Any]] = {}
+rooms: dict[str, dict[str, Any]] = {}
 quick_queue: list[int] = []
 
 
