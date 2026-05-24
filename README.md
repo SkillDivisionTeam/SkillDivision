@@ -34,8 +34,8 @@ flowchart TB
     end
 
     Internet --> Nginx
-    Nginx -->|"/" SPA| Frontend
-    Nginx -->|"/api/", "/admin/"| Backend
+    Nginx --> |SPA| Frontend
+    Nginx --> |API и admin| Backend
     Backend --> DB
     Bot -->|REST API| Backend
     Bot -.->|Telegram API| Internet
