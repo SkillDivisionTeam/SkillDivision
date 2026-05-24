@@ -20,6 +20,9 @@ on:
       - 'bot/Dockerfile*'
       - '.github/workflows/infra.yml'
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Валидация конфигураций

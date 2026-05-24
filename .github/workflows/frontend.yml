@@ -12,6 +12,9 @@ on:
       - 'frontend/**'
       - '.github/workflows/frontend.yml'
 
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '20'
 
@@ -85,6 +88,9 @@ jobs:
     name: Сборка продакшн-версии
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
