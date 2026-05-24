@@ -262,6 +262,8 @@ git commit --no-verify -m "Ваш коммит"
 - [Функциональная Спецификация](docs/ru/3_func_specification.md)
 - [Спецификации и сценарии тестов](docs/ru/4_test_specification.md)
 - [Руководство по развёртыванию](docs/ru/5_deployment.md)
+- [Статус проекта (MVP, риски, спека vs код)](docs/ru/6_project_status.md)
+- [Готовность к диплому — шпаргалка для команды](docs/ru/diploma_readiness.md)
 
 ## Google Drive
 
