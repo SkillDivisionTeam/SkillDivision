@@ -1,88 +1,98 @@
-# Спецификация версий SkillDivision
+# Версии стека Skill Division
+
+Источники правды: `backend/requirements.txt`, `bot/requirements.txt`, `frontend/package.json`, `frontend/package-lock.json`, `docker-compose.yml`, `Dockerfile*`.
+
+Обновлено: май 2026.
 
 ---
 
 ## TL;DR
 
-| Что | Версия | Зачем |
-|-----|--------|-------|
-| Python | **3.11.9** | Быстрая, стабильная, поддержка до 2027 |
-| Django | **4.2.16 LTS** | Long Term Support до 2026 |
-| PostgreSQL | **14.12** | Оптимальна для малых проектов, поддержка до 2026 |
-| Node.js | **20.11 LTS** | Современная LTS с поддержкой до 2026 |
-| React | **18.2.0** | Стабильная с Concurrent Features |
+| Компонент | Версия | Где зафиксировано |
+|-----------|--------|-------------------|
+| Python | **3.11.9** | `backend/Dockerfile`, `bot/Dockerfile` |
+| Node.js | **20.11** (Alpine) | `frontend/Dockerfile`, `frontend/Dockerfile.prod` |
+| PostgreSQL | **14.12-alpine** | `docker-compose.yml` |
+| pgAdmin | **8.2** | `docker-compose.yml` |
+| Nginx (prod frontend) | **1.25-alpine** | `frontend/Dockerfile.prod` |
+| Django | **>=5.0** | `backend/requirements.txt` |
+| React | **^18.2.0** (lock: 18.3.1) | `frontend/package.json` / `package-lock.json` |
 
 ---
 
-## Полная спецификация
+## Backend
 
-### Backend (Django + API)
+**Docker:** `python:3.11.9-slim` (`backend/Dockerfile`, `backend/Dockerfile.prod`)
+
+**`backend/requirements.txt`** (минимальные версии, без lockfile):
 
 ```txt
-Python: 3.11.9
-Django: 4.2.16
-Django REST Framework: 3.14.0
-PostgreSQL: 14.12
-psycopg2-binary: 2.9.9
-django-cors-headers: 4.3.1
-python-decouple: 3.8
+Django>=5.0
+djangorestframework>=3.14
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+django-cors-headers>=4.3
+gunicorn
+drf-yasg
 ```
 
-**Docker образ:**
-
-```dockerfile
-FROM python:3.11.9-slim
-```
+При `pip install` ставится последняя версия, удовлетворяющая `>=`.
 
 ---
 
-### Telegram Bot
+## Telegram Bot
+
+**Docker:** `python:3.11.9-slim` (`bot/Dockerfile`)
+
+**`bot/requirements.txt`** (точные версии):
 
 ```txt
-Python: 3.11.9
-python-telegram-bot: 20.7
-requests: 2.31.0
-python-decouple: 3.8
-```
-
-**Docker образ:**
-
-```dockerfile
-FROM python:3.11.9-slim
+pyTelegramBotAPI==4.22.1
+gigachat==0.1.21
+requests==2.33.1
+types-requests==2.33.0.20260402
+python-dotenv==1.2.2
 ```
 
 ---
 
-### Frontend (React)
+## Frontend
 
-```json
-{
-  "node": "20.11.0",
-  "react": "18.2.0",
-  "react-dom": "18.2.0",
-  "vite": "5.0.8",
-  "react-router-dom": "6.20.1"
-}
-```
+**Docker (dev):** `node:20.11-alpine`
+**Docker (prod):** `node:20.11-alpine` → сборка, `nginx:1.25-alpine` → раздача статики
 
-**Docker образ:**
+**`frontend/package.json`** — диапазоны:
 
-```dockerfile
-FROM node:20.11-alpine
-```
+| Пакет | В `package.json` |
+|-------|------------------|
+| react / react-dom | ^18.2.0 |
+| vite | ^5.0.8 |
+| react-router-dom | ^6.30.3 |
+| recharts | ^3.5.1 |
+| lucide-react | ^0.556.0 |
+| @google/genai | ^1.31.0 |
+| typescript | ~5.8.2 |
+| eslint | ^8.55.0 |
+| node (engines) | >=20.11.0 |
+
+**`frontend/package-lock.json`** — что реально ставит `npm ci` (основное):
+
+| Пакет | В lock |
+|-------|--------|
+| react / react-dom | 18.3.1 |
+| vite | 5.4.21 |
+| react-router-dom | 6.30.3 |
+| recharts | 3.5.1 |
+| lucide-react | 0.556.0 |
+| @google/genai | 1.31.0 |
+| typescript | 5.8.3 |
 
 ---
 
-### База данных
+## База данных и инфра
 
 ```yaml
-PostgreSQL: 14.12-alpine
-pgAdmin: 8.2
-```
-
-**Docker образ:**
-
-```yaml
+# docker-compose.yml
 db:
   image: postgres:14.12-alpine
 
@@ -92,44 +102,24 @@ pgadmin:
 
 ---
 
-## Политика обновлений
+## Обновления
 
-### Когда обновлять
+1. **Dependabot** — еженедельно, PR в `develop` (см. `.github/dependabot.yml`)
+2. **Ручная проверка:** `pip list --outdated` (backend/bot), `npm outdated` (frontend)
+3. Перед защитой / релизом — не мерджить deps без необходимости; CI должен быть зелёным
 
-| Тип обновления | Пример | Частота | Тестирование |
-|----------------|--------|---------|--------------|
-| **Патч** | 3.11.9 → 3.11.12 | Сразу при выходе | Минимальное (только критичное) |
-| **Минор** | 4.2.16 → 4.3.0 | Каждые 2-3 месяца | Полное на staging |
-| **Мажор** | 4.x → 5.x | Только после планирования | Полное + регрессионное |
-
-### Как отслеживать
-
-1. **GitHub Dependabot** — автоматические PR для обновлений
-2. **Ежемесячная проверка:** `pip list --outdated`
-3. **Подписка на security advisories** критичных пакетов
-
----
-
-## Что делать при уязвимости
-
-1. Проверить, затрагивает ли она нашу версию
-2. Если да — немедленно обновить патч-версию
-3. Пересобрать Docker образы: `docker-compose build --no-cache`
-4. Протестировать на staging
-5. Задеплоить на production
-
-**Пример:**
+При security-advisory: обновить версию в `requirements.txt` / `package.json`, пересобрать образ:
 
 ```bash
-# Обнаружена уязвимость в Django 4.2.16
-# Вышел патч 4.2.17
+docker compose build --no-cache backend
+docker compose up -d
+```
 
-# 1. Обновить requirements.txt
-Django==4.2.17
+Пример для Django:
 
-# 2. Пересобрать
-docker-compose build backend --no-cache
-
-# 3. Тестировать
-docker-compose up
+```bash
+# requirements.txt: Django>=5.0,<5.1  или конкретный патч
+docker compose build backend --no-cache
+docker compose up -d
+docker compose exec backend python manage.py check
 ```
