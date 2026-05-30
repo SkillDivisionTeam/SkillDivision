@@ -1,5 +1,4 @@
 import random
-from typing import Any
 
 from django.contrib.auth.models import User
 from django.db import models
@@ -9,6 +8,7 @@ from rest_framework import status, views, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -25,6 +25,8 @@ class BotAuthView(views.APIView):
     """
     Авторизация/Регистрация для бота.
     """
+
+    permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
         tg_id = request.data.get("tg_id")
@@ -163,6 +165,8 @@ class EventViewSet(viewsets.ModelViewSet):
 
 
 class ResultView(views.APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request: Request) -> Response:
         """Прием результатов от Бота"""
         user_id = request.data.get("user_id")
@@ -202,7 +206,7 @@ class CustomAuthToken(ObtainAuthToken):
     Кастомная авторизация: возвращает токен + данные пользователя (роль, ID)
     """
 
-    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def post(self, request: Request) -> Response:
         serializer = self.serializer_class(
             data=request.data, context={"request": request}
         )
@@ -210,8 +214,13 @@ class CustomAuthToken(ObtainAuthToken):
         user = serializer.validated_data["user"]
         token, created = Token.objects.get_or_create(user=user)
 
+        # БЕЗОПАСНАЯ ВЫДАЧА РОЛЕЙ:
+        # Проверяем встроенные флаги Django.
+        # Если создали через createsuperuser -> admin, иначе -> hr
+        default_role = "admin" if user.is_superuser or user.is_staff else "hr"
+
         profile, _ = Profile.objects.get_or_create(
-            user=user, defaults={"role": "admin"}
+            user=user, defaults={"role": default_role}
         )
 
         return Response(
