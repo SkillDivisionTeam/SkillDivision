@@ -12,6 +12,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from .gemini import generate_quiz_topics
 from .models import Event, Profile, QuizResult
 from .serializers import (
     EventSerializer,
@@ -199,6 +200,23 @@ class ResultView(views.APIView):
         )
 
         return Response({"status": "saved"})
+
+
+class GenerateTopicsView(views.APIView):
+    """Прокси к Gemini API: ключ хранится только на сервере."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        event_title = request.data.get("event_title", "").strip()
+        if not event_title:
+            return Response(
+                {"error": "event_title required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        topics = generate_quiz_topics(event_title)
+        return Response({"topics": topics})
 
 
 class CustomAuthToken(ObtainAuthToken):

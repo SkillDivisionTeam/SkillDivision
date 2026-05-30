@@ -6,6 +6,7 @@ from .views import (
     BotProfileView,
     CustomAuthToken,
     EventViewSet,
+    GenerateTopicsView,
     ResultView,
 )
 
@@ -17,5 +18,8 @@ urlpatterns = [
     path("bot-auth/", BotAuthView.as_view(), name="bot-auth"),
     path("submit-score/", ResultView.as_view(), name="submit-score"),
     path("login/", CustomAuthToken.as_view(), name="api_token_auth"),
+    path(
+        "ai/generate-topics/", GenerateTopicsView.as_view(), name="ai-generate-topics"
+    ),
     path("bot-profile/<int:tg_id>/", BotProfileView.as_view(), name="bot-profile"),
 ]
