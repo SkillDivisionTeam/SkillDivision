@@ -89,3 +89,11 @@ export const login = async (username: string, password?: string): Promise<User> 
 export const logout = () => {
   localStorage.removeItem('auth_token');
 };
+
+export const generateQuizTopics = async (eventTitle: string): Promise<string[]> => {
+  const response = await request<{ topics: string[] }>('/ai/generate-topics/', {
+    method: 'POST',
+    body: JSON.stringify({ event_title: eventTitle }),
+  });
+  return response.topics;
+};
