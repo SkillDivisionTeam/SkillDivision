@@ -43,3 +43,24 @@ class SmokeTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
+
+    # ──────────────────────────────────────────────
+    # POST /api/ai/generate-topics/
+    # ──────────────────────────────────────────────
+    def test_generate_topics_returns_list(self) -> None:
+        """Генерация тем возвращает 200 и массив topics (mock без API-ключа)."""
+        response = self.client.post(
+            "/api/ai/generate-topics/",
+            {"event_title": "Python Meetup"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("topics", data)
+        self.assertIsInstance(data["topics"], list)
+        self.assertGreaterEqual(len(data["topics"]), 1)
+
+    def test_generate_topics_missing_title_returns_400(self) -> None:
+        """Без event_title должен вернуть 400."""
+        response = self.client.post("/api/ai/generate-topics/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
