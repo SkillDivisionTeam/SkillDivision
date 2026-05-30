@@ -66,15 +66,10 @@ jobs:
           cd frontend
           npm ci
 
-      - name: Установка зависимостей для тестов
-        run: |
-          cd frontend
-          npm install --save-dev vitest @vitest/coverage-v8 @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom
-
       - name: Запуск тестов
         run: |
           cd frontend
-          npx vitest run --coverage --passWithNoTests
+          npm run test:coverage
 
       - name: Загрузка отчёта о покрытии в Codecov
         uses: codecov/codecov-action@v4
