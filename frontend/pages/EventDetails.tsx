@@ -21,6 +21,7 @@ import {
 import { Button, Card, Badge } from '../components/UI';
 import { getEventById, getEventStats } from '../services/api';
 import { Event, EventStats } from '../types';
+import { exportEventReport } from '../utils/exportCsv';
 
 const EventDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +67,8 @@ const EventDetails: React.FC = () => {
 
   const COLORS = ['#0ea5e9', '#8b5cf6', '#10b981', '#f59e0b'];
 
+  const handleExportCsv = () => exportEventReport(event, stats);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
@@ -90,7 +93,7 @@ const EventDetails: React.FC = () => {
             </div>
           </div>
 
-          <Button variant="secondary" onClick={() => alert("Функция экспорта в CSV будет доступна в полной версии")}>
+          <Button variant="secondary" onClick={handleExportCsv}>
             <Download className="w-4 h-4 mr-2" /> Скачать отчет
           </Button>
         </div>
@@ -207,7 +210,7 @@ const EventDetails: React.FC = () => {
             <p className="text-slate-400 mb-6 max-w-sm">
                 Скачайте полный отчет в формате CSV для анализа в Excel или Google Sheets. Включает контакты участников.
             </p>
-            <Button size="lg" onClick={() => alert("Скачивание началось...")}>
+            <Button size="lg" onClick={handleExportCsv}>
                 Скачать CSV файл
             </Button>
         </Card>

@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Type } from 'lucide-react';
 import { Button, Input, Card } from '../components/UI';
-import { createEvent } from '../services/api';
-import { generateQuizTopics } from '../services/geminiService';
+import { createEvent, generateQuizTopics } from '../services/api';
 
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
