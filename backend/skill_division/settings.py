@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "corsheaders",
+    "drf_yasg",
     # Local
     "api",
 ]
@@ -104,8 +105,14 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        # Указываем, что API использует токены для проверки прав
+        "rest_framework.authentication.TokenAuthentication",
+        # Полезно, если тестируешь API прямо в браузере под админом
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
-        # Для MVP открываем доступ, позже закроем
-        "rest_framework.permissions.AllowAny",
-    ]
+        # Чтение (GET) разрешено всем, а изменение (POST/PUT/DELETE) — только авторизованным
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ],
 }
