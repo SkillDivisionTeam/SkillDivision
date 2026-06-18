@@ -7,7 +7,7 @@
 # Django Framework (LTS до апреля 2026)
 Django>=5.0
 djangorestframework>=3.14
-psycopg2-binary>=2.9
+psycopg2-binary>=2.9.12
 python-dotenv>=1.0
 django-cors-headers>=4.3
 gunicorn
