@@ -3,4 +3,4 @@ pyTelegramBotAPI==4.22.1
 gigachat==0.1.21
 requests==2.33.1
 types-requests==2.33.0.20260402
-python-dotenv==1.2.2
+python-dotenv==1.2.3
